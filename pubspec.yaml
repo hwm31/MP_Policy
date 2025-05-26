@@ -1,27 +1,40 @@
 name: youth_job_community
 description: 청년 일자리 정책 커뮤니티 앱
 
+publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
-  flutter: ">=3.10.0"
+  sdk: '>=2.19.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # 안정적인 Firebase 버전 (고정)
-  firebase_core: 2.24.2
-  firebase_auth: 4.15.3
-  cloud_firestore: 4.13.6
+  # Firebase (나중에 추가할 때 사용)
+  # firebase_core: ^2.24.2
+  # firebase_auth: ^4.15.3
+  # cloud_firestore: ^4.13.6
+  # firebase_storage: ^11.6.0
+
+  # 상태 관리 (나중에 필요시)
+  # provider: ^6.1.1
 
   cupertino_icons: ^1.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
+
+  # 폰트 추가 (선택사항)
+  # fonts:
+  #   - family: NotoSansKR
+  #     fonts:
+  #       - asset: fonts/NotoSansKR-Regular.ttf
+  #       - asset: fonts/NotoSansKR-Bold.ttf
+  #         weight: 700

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../models/post.dart';
 
 class CreatePostScreen extends StatefulWidget {
   @override
@@ -10,84 +9,85 @@ class CreatePostScreen extends StatefulWidget {
 class _CreatePostScreenState extends State<CreatePostScreen> {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
-  String selectedCategory = '일자리';
-  final List<String> categories = ['일자리', '교육', '취업', '후기'];
-  bool isLoading = false;
+  String _selectedCategory = '질문';
 
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _contentController.dispose();
-    super.dispose();
-  }
+  final List<String> categories = ['질문', '정보', '후기'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('새 글 작성'),
+        title: Text(
+          '새 글 작성하기',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
-        foregroundColor: Colors.black,
+        iconTheme: IconThemeData(color: Colors.black),
         actions: [
           TextButton(
-            onPressed: isLoading ? null : _submitPost,
+            onPressed: _createPost,
             child: Text(
               '완료',
               style: TextStyle(
-                color: isLoading ? Colors.grey : Colors.green,
+                color: Colors.green,
                 fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Padding(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 카테고리 선택
+            // 글 주제 선택
             Text(
-              '카테고리',
+              '글 주제 선택',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
+
             SizedBox(height: 12),
+
+            // 카테고리 드롭다운
             Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[300]!),
+                border: Border.all(color: Colors.grey.shade300),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
-                  value: selectedCategory,
-                  items: categories.map((String category) {
+                  value: _selectedCategory,
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedCategory = newValue!;
+                    });
+                  },
+                  items: categories.map<DropdownMenuItem<String>>((String value) {
                     return DropdownMenuItem<String>(
-                      value: category,
-                      child: Text(category),
+                      value: value,
+                      child: Text(value),
                     );
                   }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        selectedCategory = newValue;
-                      });
-                    }
-                  },
                 ),
               ),
             ),
 
             SizedBox(height: 24),
 
-            // 제목 입력
+            // 제목
             Text(
               '제목',
               style: TextStyle(
@@ -96,13 +96,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 color: Colors.black87,
               ),
             ),
+
             SizedBox(height: 12),
+
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
                 hintText: '제목을 입력하세요',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -113,138 +116,104 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
             SizedBox(height: 24),
 
-            // 내용 입력
+            // 글 내용 작성
             Text(
-              '내용',
+              '글 내용 작성',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.black87,
               ),
             ),
+
             SizedBox(height: 12),
-            TextField(
-              controller: _contentController,
-              maxLines: 10,
-              decoration: InputDecoration(
-                hintText: '내용을 입력하세요',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: Colors.green),
-                ),
-                alignLabelWithHint: true,
+
+            Text(
+              '욕설, 비하, 허위사실 등의 내용을 작성할 경우 통보 없이 글이 삭제될 수 있습니다.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
               ),
             ),
 
-            SizedBox(height: 32),
+            SizedBox(height: 12),
 
-            // 작성 완료 버튼
-            if (isLoading)
-              Center(
-                child: CircularProgressIndicator(color: Colors.green),
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _submitPost,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+            Expanded(
+              child: TextField(
+                controller: _contentController,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                decoration: InputDecoration(
+                  hintText: '내용을 입력하세요',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
-                  child: Text(
-                    '게시글 작성',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.green),
                   ),
+                  contentPadding: EdgeInsets.all(16),
                 ),
               ),
+            ),
           ],
+        ),
+      ),
+
+      // 글 등록하기 버튼
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.all(16),
+        child: ElevatedButton(
+          onPressed: _createPost,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            padding: EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          child: Text(
+            '글 등록하기',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _submitPost() async {
-    if (_titleController.text.trim().isEmpty) {
-      _showSnackBar('제목을 입력해주세요');
+  void _createPost() {
+    if (_titleController.text.trim().isEmpty || _contentController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('제목과 내용을 모두 입력해주세요.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
-    if (_contentController.text.trim().isEmpty) {
-      _showSnackBar('내용을 입력해주세요');
-      return;
-    }
+    final newPost = Post(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: _titleController.text.trim(),
+      content: _contentController.text.trim(),
+      category: _selectedCategory,
+      author: '익명', // 나중에 로그인 기능 추가 시 실제 사용자명
+      createdAt: DateTime.now(),
+    );
 
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _showSnackBar('로그인이 필요합니다');
-        return;
-      }
-
-      // 사용자 정보 가져오기
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      String authorName = '익명';
-      if (userDoc.exists) {
-        authorName = userDoc.data()?['name'] ?? user.displayName ?? '익명';
-      }
-
-      // 게시글 데이터 생성
-      final postData = {
-        'title': _titleController.text.trim(),
-        'content': _contentController.text.trim(),
-        'category': selectedCategory,
-        'authorId': user.uid,
-        'authorName': authorName,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'likeCount': 0,
-        'commentCount': 0,
-        'likedBy': [],
-      };
-
-      // Firestore에 게시글 저장
-      await FirebaseFirestore.instance
-          .collection('posts')
-          .add(postData);
-
-      _showSnackBar('게시글이 작성되었습니다');
-      Navigator.pop(context);
-
-    } catch (e) {
-      _showSnackBar('게시글 작성 중 오류가 발생했습니다');
-      print('Error creating post: $e');
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
+    Navigator.pop(context, newPost);
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
-    );
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    super.dispose();
   }
 }
