@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../widgets/post_card.dart';
+import 'post_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -172,7 +173,17 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: recentPolicies.length,
               itemBuilder: (context, index) {
                 final post = recentPolicies[index];
-                return PostCard(post: post);
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PostDetailScreen(post: post),
+                      ),
+                    );
+                  },
+                  child: PostCard(post: post),
+                );
               },
             ),
 
@@ -183,37 +194,186 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQuickMenu(String title, IconData icon, Color color) {
-    return Container(
-      width: 80,
-      margin: EdgeInsets.only(right: 12),
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
+  Widget _buildQuickMenu(String title, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 80,
+        margin: EdgeInsets.only(right: 12),
+        child: Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 28,
+              ),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 28,
+            SizedBox(height: 8),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  void _showJobSearchDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.work, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('일자리 찾기'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('추천 일자리 서비스'),
+              SizedBox(height: 8),
+              ListTile(
+                leading: Icon(Icons.apartment),
+                title: Text('워크넷'),
+                subtitle: Text('고용노동부 운영'),
+                trailing: Icon(Icons.arrow_forward_ios, size: 16),
+              ),
+              ListTile(
+                leading: Icon(Icons.business),
+                title: Text('사람인'),
+                subtitle: Text('민간 채용사이트'),
+                trailing: Icon(Icons.arrow_forward_ios, size: 16),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('닫기'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPolicyInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.policy, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('정책 정보'),
+            ],
+          ),
+          content: Text('청년 정책 정보를 확인하실 수 있습니다.\n\n• 취업 지원 정책\n• 주거 지원 정책\n• 창업 지원 정책\n• 교육 지원 정책'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('닫기'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Policy 탭으로 이동하는 로직 추가 가능
+              },
+              child: Text('정책 보기'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEducationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.school, color: Colors.purple),
+              SizedBox(width: 8),
+              Text('교육 과정'),
+            ],
+          ),
+          content: Text('청년을 위한 교육과정 정보입니다.\n\n• K-디지털 트레이닝\n• 내일배움카드\n• 청년 직업훈련\n• 스킬업 과정'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('닫기'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showStartupDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.business, color: Colors.red),
+              SizedBox(width: 8),
+              Text('창업 지원'),
+            ],
+          ),
+          content: Text('청년 창업 지원 프로그램입니다.\n\n• 창업 지원금\n• 창업 교육\n• 멘토링 프로그램\n• 사업화 지원'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('닫기'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showHousingDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.home, color: Colors.green),
+              SizedBox(width: 8),
+              Text('주거 지원'),
+            ],
+          ),
+          content: Text('청년 주거 지원 정책입니다.\n\n• 청년 주거급여\n• 전세자금 대출\n• 청년 임대주택\n• 월세 지원'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('닫기'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
