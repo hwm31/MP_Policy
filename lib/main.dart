@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/setting_screen.dart';
+import 'screens/policy_screen.dart';
 import 'screens/community_screen.dart';
+import 'screens/setting_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -110,10 +109,10 @@ class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    HomeScreen(),          // 기존 홈 화면 사용
-    CommunityScreen(),     // 커뮤니티 화면 추가
-    ProfileScreen(),       // 기존 프로필 화면 사용
-    SettingScreen(),       // 기존 설정 화면 사용
+    HomeScreen(),          // 홈 화면
+    PolicyScreen(),        // 정책 화면 (새로 추가)
+    CommunityScreen(),     // 커뮤니티 화면
+    SettingScreen(),       // 설정 화면 (프로필 포함)
   ];
 
   void _onItemTapped(int index) {
@@ -155,12 +154,12 @@ class _MainNavigationState extends State<MainNavigation> {
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.people),
-              label: 'Community',
+              icon: Icon(Icons.policy),
+              label: 'Policy',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
+              icon: Icon(Icons.people),
+              label: 'Community',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings),
