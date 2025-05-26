@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_navigation.dart';
 
 void main() {
   runApp(MyApp());
@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.green,
         fontFamily: 'NotoSansKR',
       ),
-      home: HomeScreen(),
+      home: MainNavigation(),
       debugShowCheckedModeBanner: false,
     );
   }
