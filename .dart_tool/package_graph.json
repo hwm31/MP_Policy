@@ -16,6 +16,13 @@
       ]
     },
     {
+      "name": "flutter_lints",
+      "version": "2.0.3",
+      "dependencies": [
+        "lints"
+      ]
+    },
+    {
       "name": "flutter_test",
       "version": "0.0.0",
       "dependencies": [
@@ -59,6 +66,11 @@
         "sky_engine",
         "vector_math"
       ]
+    },
+    {
+      "name": "lints",
+      "version": "2.1.1",
+      "dependencies": []
     },
     {
       "name": "vm_service",
@@ -221,18 +233,6 @@
     {
       "name": "sky_engine",
       "version": "0.0.0",
-      "dependencies": []
-    },
-    {
-      "name": "flutter_lints",
-      "version": "2.0.3",
-      "dependencies": [
-        "lints"
-      ]
-    },
-    {
-      "name": "lints",
-      "version": "2.1.1",
       "dependencies": []
     }
   ],
