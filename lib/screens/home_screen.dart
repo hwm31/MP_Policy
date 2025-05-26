@@ -126,11 +126,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  _buildQuickMenu('일자리 찾기', Icons.work, Colors.blue),
-                  _buildQuickMenu('정책 정보', Icons.policy, Colors.orange),
-                  _buildQuickMenu('교육 과정', Icons.school, Colors.purple),
-                  _buildQuickMenu('창업 지원', Icons.business, Colors.red),
-                  _buildQuickMenu('주거 지원', Icons.home, Colors.green),
+                  _buildQuickMenu('일자리 찾기', Icons.work, Colors.blue, () {
+                    _showJobSearchDialog();
+                  }),
+                  _buildQuickMenu('정책 정보', Icons.policy, Colors.orange, () {
+                    _showPolicyInfoDialog();
+                  }),
+                  _buildQuickMenu('교육 과정', Icons.school, Colors.purple, () {
+                    _showEducationDialog();
+                  }),
+                  _buildQuickMenu('창업 지원', Icons.business, Colors.red, () {
+                    _showStartupDialog();
+                  }),
+                  _buildQuickMenu('주거 지원', Icons.home, Colors.green, () {
+                    _showHousingDialog();
+                  }),
                 ],
               ),
             ),
