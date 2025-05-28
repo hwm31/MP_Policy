@@ -3,68 +3,46 @@ import 'package:firebase_auth/firebase_auth.dart';
 class AuthService {
   static final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // 현재 사용자 가져오기
+  // 현재 사용자 정보
   static User? get currentUser => _auth.currentUser;
-
-  // 현재 사용자 ID 가져오기
-  static String get currentUserId => _auth.currentUser?.uid ?? 'anonymous';
-
-  // 현재 사용자 이름 가져오기
-  static String get currentUserName => _auth.currentUser?.displayName ?? '익명';
-
-  // 현재 사용자 이메일 가져오기
-  static String get currentUserEmail => _auth.currentUser?.email ?? '';
-
-  // 로그인 상태 확인
+  static String get currentUserId => _auth.currentUser?.uid ?? '';
+  static String get currentUserName => _auth.currentUser?.displayName ?? '';
   static bool get isLoggedIn => _auth.currentUser != null;
 
-  // 인증 상태 스트림
+  // 인증 상태 변화 스트림
   static Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // 이메일로 회원가입
-  static Future<bool> signUpWithEmail(String email, String password, String name) async {
+  // 이메일/패스워드로 회원가입
+  static Future<UserCredential?> signUpWithEmailAndPassword(
+      String email,
+      String password
+      ) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-
-      // 사용자 이름 설정
-      await result.user?.updateDisplayName(name);
-
-      return true;
+      return result;
     } catch (e) {
-      print('회원가입 에러: $e');
-      return false;
+      print('회원가입 오류: $e');
+      return null;
     }
   }
 
-  // 이메일로 로그인
-  static Future<bool> signInWithEmail(String email, String password) async {
+  // 이메일/패스워드로 로그인
+  static Future<UserCredential?> signInWithEmailAndPassword(
+      String email,
+      String password
+      ) async {
     try {
-      await _auth.signInWithEmailAndPassword(
+      UserCredential result = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      return true;
+      return result;
     } catch (e) {
-      print('로그인 에러: $e');
-      return false;
-    }
-  }
-
-  // 익명 로그인 (테스트용)
-  static Future<bool> signInAnonymously() async {
-    try {
-      UserCredential result = await _auth.signInAnonymously();
-
-      // 익명 사용자에게 임시 이름 설정
-      await result.user?.updateDisplayName('익명사용자${DateTime.now().millisecondsSinceEpoch % 1000}');
-
-      return true;
-    } catch (e) {
-      print('익명 로그인 에러: $e');
-      return false;
+      print('로그인 오류: $e');
+      return null;
     }
   }
 
@@ -74,18 +52,55 @@ class AuthService {
       await _auth.signOut();
       return true;
     } catch (e) {
-      print('로그아웃 에러: $e');
+      print('로그아웃 오류: $e');
       return false;
     }
   }
 
-  // 비밀번호 재설정
-  static Future<bool> resetPassword(String email) async {
+  // 패스워드 재설정 이메일 전송
+  static Future<bool> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
       return true;
     } catch (e) {
-      print('비밀번호 재설정 에러: $e');
+      print('패스워드 재설정 오류: $e');
+      return false;
+    }
+  }
+
+  // 사용자 프로필 업데이트
+  static Future<bool> updateProfile({
+    String? displayName,
+    String? photoURL,
+  }) async {
+    try {
+      await _auth.currentUser?.updateDisplayName(displayName);
+      await _auth.currentUser?.updatePhotoURL(photoURL);
+      return true;
+    } catch (e) {
+      print('프로필 업데이트 오류: $e');
+      return false;
+    }
+  }
+
+  // 이메일 인증 전송
+  static Future<bool> sendEmailVerification() async {
+    try {
+      await _auth.currentUser?.sendEmailVerification();
+      return true;
+    } catch (e) {
+      print('이메일 인증 전송 오류: $e');
+      return false;
+    }
+  }
+
+  // 계정 삭제
+  static Future<bool> deleteAccount() async {
+    try {
+      await _auth.currentUser?.delete();
+      return true;
+    } catch (e) {
+      print('계정 삭제 오류: $e');
       return false;
     }
   }
