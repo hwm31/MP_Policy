@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
+import '../models/comment.dart';
+import '../services/firebase_service.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -13,38 +15,29 @@ class PostDetailScreen extends StatefulWidget {
 class _PostDetailScreenState extends State<PostDetailScreen> {
   bool _isLiked = false;
   int _likeCount = 0;
-  final List<Comment> _comments = [];
   final _commentController = TextEditingController();
+  bool _isLoadingLike = false;
+  bool _isLoadingComment = false;
+
+  // 임시 사용자 ID (실제로는 Firebase Auth에서 가져와야 함)
+  final String _currentUserId = 'temp_user_123';
+  final String _currentUserName = '익명';
 
   @override
   void initState() {
     super.initState();
     _likeCount = widget.post.likes;
+    _checkIfLiked();
+  }
 
-    // 더미 댓글 데이터
-    _comments.addAll([
-      Comment(
-        id: '1',
-        author: '방청년',
-        content: '너무 멋져요! 지도 2026년도에 열리나 신청해봐야겠어요 취업 축하해요!!',
-        createdAt: DateTime.now().subtract(Duration(hours: 2)),
-        isAuthor: false,
-      ),
-      Comment(
-        id: '2',
-        author: '성철남',
-        content: '꽤 신청해보세요! 먼저 자격증명 주고 좋은 프로그램입니다',
-        createdAt: DateTime.now().subtract(Duration(hours: 1)),
-        isAuthor: true,
-      ),
-      Comment(
-        id: '3',
-        author: '손청년',
-        content: '지도 IT 관련 진로에 이니어 고민했는데, 후기 너무 감사합니다! 취업 축하드려요!!',
-        createdAt: DateTime.now().subtract(Duration(minutes: 30)),
-        isAuthor: false,
-      ),
-    ]);
+  // 사용자가 이미 좋아요를 했는지 확인
+  Future<void> _checkIfLiked() async {
+    bool liked = await FirebaseService.isLiked(widget.post.id, _currentUserId);
+    if (mounted) {
+      setState(() {
+        _isLiked = liked;
+      });
+    }
   }
 
   @override
@@ -155,7 +148,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         Row(
                           children: [
                             GestureDetector(
-                              onTap: _toggleLike,
+                              onTap: _isLoadingLike ? null : _toggleLike,
                               child: Container(
                                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
@@ -168,11 +161,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      _isLiked ? Icons.favorite : Icons.favorite_border,
-                                      color: _isLiked ? Colors.red : Colors.grey.shade600,
-                                      size: 18,
-                                    ),
+                                    if (_isLoadingLike)
+                                      SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            _isLiked ? Colors.red : Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      Icon(
+                                        _isLiked ? Icons.favorite : Icons.favorite_border,
+                                        color: _isLiked ? Colors.red : Colors.grey.shade600,
+                                        size: 18,
+                                      ),
                                     SizedBox(width: 4),
                                     Text(
                                       '$_likeCount',
@@ -186,12 +191,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               ),
                             ),
                             SizedBox(width: 12),
-                            Text(
-                              '댓글 ${_comments.length}',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 14,
-                              ),
+                            StreamBuilder<List<Comment>>(
+                              stream: FirebaseService.getCommentsStream(widget.post.id),
+                              builder: (context, snapshot) {
+                                int commentCount = snapshot.hasData ? snapshot.data!.length : 0;
+                                return Text(
+                                  '댓글 $commentCount',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -201,14 +212,55 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
                   Divider(thickness: 8, color: Colors.grey.shade100),
 
-                  // 댓글 목록
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: _comments.length,
-                    itemBuilder: (context, index) {
-                      final comment = _comments[index];
-                      return _buildCommentItem(comment);
+                  // 댓글 목록 (실시간)
+                  StreamBuilder<List<Comment>>(
+                    stream: FirebaseService.getCommentsStream(widget.post.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Container(
+                          padding: EdgeInsets.all(20),
+                          child: Text(
+                            '댓글을 불러오는 중 오류가 발생했습니다.',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        );
+                      }
+
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Container(
+                          padding: EdgeInsets.all(20),
+                          child: Center(
+                            child: CircularProgressIndicator(color: Colors.green),
+                          ),
+                        );
+                      }
+
+                      List<Comment> comments = snapshot.data ?? [];
+
+                      if (comments.isEmpty) {
+                        return Container(
+                          padding: EdgeInsets.all(20),
+                          child: Center(
+                            child: Text(
+                              '첫 번째 댓글을 남겨보세요!',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: comments.length,
+                        itemBuilder: (context, index) {
+                          final comment = comments[index];
+                          return _buildCommentItem(comment);
+                        },
+                      );
                     },
                   ),
                 ],
@@ -238,6 +290,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 Expanded(
                   child: TextField(
                     controller: _commentController,
+                    enabled: !_isLoadingComment,
                     decoration: InputDecoration(
                       hintText: '댓글을 입력하세요...',
                       border: OutlineInputBorder(
@@ -254,14 +307,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
                 SizedBox(width: 8),
                 GestureDetector(
-                  onTap: _addComment,
+                  onTap: (_isLoadingComment || _commentController.text.trim().isEmpty)
+                      ? null
+                      : _addComment,
                   child: Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.green,
+                      color: (_isLoadingComment || _commentController.text.trim().isEmpty)
+                          ? Colors.grey.shade300
+                          : Colors.green,
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: _isLoadingComment
+                        ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : Icon(
                       Icons.send,
                       color: Colors.white,
                       size: 18,
@@ -277,6 +343,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Widget _buildCommentItem(Comment comment) {
+    bool isMyComment = comment.author == _currentUserName;
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -284,10 +352,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: comment.isAuthor ? Colors.green.shade100 : Colors.grey.shade200,
+            backgroundColor: isMyComment ? Colors.blue.shade100 : Colors.grey.shade200,
             child: Icon(
               Icons.person,
-              color: comment.isAuthor ? Colors.green : Colors.grey.shade600,
+              color: isMyComment ? Colors.blue : Colors.grey.shade600,
               size: 18,
             ),
           ),
@@ -323,6 +391,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           ),
                         ),
                       ),
+                    if (isMyComment)
+                      Container(
+                        margin: EdgeInsets.only(left: 6),
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '내 댓글',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.blue.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     Spacer(),
                     Text(
                       _getTimeAgo(comment.createdAt),
@@ -350,28 +435,75 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  void _toggleLike() {
+  Future<void> _toggleLike() async {
     setState(() {
-      _isLiked = !_isLiked;
-      _likeCount += _isLiked ? 1 : -1;
+      _isLoadingLike = true;
     });
+
+    try {
+      bool success = await FirebaseService.toggleLike(widget.post.id, _currentUserId);
+
+      if (success) {
+        // 좋아요 상태 토글
+        setState(() {
+          _isLiked = !_isLiked;
+          _likeCount += _isLiked ? 1 : -1;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('좋아요 처리 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoadingLike = false;
+      });
+    }
   }
 
-  void _addComment() {
+  Future<void> _addComment() async {
     if (_commentController.text.trim().isEmpty) return;
 
     setState(() {
-      _comments.add(
-        Comment(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          author: '나',
-          content: _commentController.text.trim(),
-          createdAt: DateTime.now(),
-          isAuthor: false,
+      _isLoadingComment = true;
+    });
+
+    try {
+      final newComment = Comment(
+        id: '', // Firestore에서 자동 생성
+        postId: widget.post.id,
+        author: _currentUserName,
+        content: _commentController.text.trim(),
+        createdAt: DateTime.now(),
+        isAuthor: widget.post.author == _currentUserName,
+      );
+
+      bool success = await FirebaseService.createComment(newComment);
+
+      if (success) {
+        _commentController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('댓글이 등록되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('댓글 등록 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
         ),
       );
-      _commentController.clear();
-    });
+    } finally {
+      setState(() {
+        _isLoadingComment = false;
+      });
+    }
   }
 
   Color _getCategoryColor(String category) {
@@ -420,21 +552,4 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _commentController.dispose();
     super.dispose();
   }
-}
-
-// 댓글 모델
-class Comment {
-  final String id;
-  final String author;
-  final String content;
-  final DateTime createdAt;
-  final bool isAuthor;
-
-  Comment({
-    required this.id,
-    required this.author,
-    required this.content,
-    required this.createdAt,
-    this.isAuthor = false,
-  });
 }
