@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 
 class SettingScreen extends StatefulWidget {
   @override
@@ -556,11 +557,33 @@ class _SettingScreenState extends State<SettingScreen> {
               child: Text('취소'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('로그아웃되었습니다.')),
-                );
+
+                // 로그아웃 처리
+                bool success = await AuthService.signOut();
+
+                if (success) {
+                  // 로그아웃 성공 시 로그인 화면으로 이동
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/',
+                        (route) => false,
+                  );
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('로그아웃되었습니다.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('로그아웃 중 오류가 발생했습니다.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
               child: Text('로그아웃', style: TextStyle(color: Colors.red)),
             ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'services/auth_service.dart';
+import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/policy_screen.dart';
 import 'screens/community_screen.dart';
@@ -21,31 +23,63 @@ class MyApp extends StatelessWidget {
       title: '청년 일자리 커뮤니티',
       theme: ThemeData(
         primarySwatch: Colors.green,
+        fontFamily: 'NotoSansKR',
       ),
-      home: SplashScreen(), // 스플래시 화면 먼저 보여주기
+      home: AuthWrapper(), // 인증 상태에 따라 화면 결정
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// 스플래시 화면 (3초 후 메인 화면으로)
-class SplashScreen extends StatefulWidget {
+// 인증 상태에 따라 로그인 화면 또는 메인 앱을 보여주는 위젯
+class AuthWrapper extends StatelessWidget {
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  Widget build(BuildContext context) {
+    return StreamBuilder(
+      stream: AuthService.authStateChanges,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SplashScreen(); // 로딩 중일 때 스플래시 화면
+        }
+
+        if (snapshot.hasData && AuthService.isLoggedIn) {
+          return SplashToMainTransition(); // 로그인 되어 있으면 스플래시 후 메인 앱
+        } else {
+          return LoginScreen(); // 로그인 안 되어 있으면 로그인 화면
+        }
+      },
+    );
+  }
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+// 스플래시 화면 후 메인 앱으로 전환
+class SplashToMainTransition extends StatefulWidget {
+  @override
+  _SplashToMainTransitionState createState() => _SplashToMainTransitionState();
+}
+
+class _SplashToMainTransitionState extends State<SplashToMainTransition> {
   @override
   void initState() {
     super.initState();
-    // 3초 후 메인 화면으로 이동
+    // 3초 후 메인 앱으로 이동
     Future.delayed(Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => MainNavigation()),
-      );
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => MainNavigation()),
+        );
+      }
     });
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return SplashScreen();
+  }
+}
+
+// 스플래시 화면 (토끼 캐릭터 3초 표시)
+class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -105,7 +139,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// 메인 네비게이션
+// 메인 네비게이션 (로그인 후에만 표시)
 class MainNavigation extends StatefulWidget {
   @override
   _MainNavigationState createState() => _MainNavigationState();
@@ -116,9 +150,9 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = [
     HomeScreen(),          // 홈 화면
-    PolicyScreen(),        // 정책 화면 (새로 추가)
+    PolicyScreen(),        // 정책 화면
     CommunityScreen(),     // 커뮤니티 화면
-    SettingScreen(),       // 설정 화면 (프로필 포함)
+    SettingScreen(),       // 설정 화면 (로그아웃 기능 포함)
   ];
 
   void _onItemTapped(int index) {

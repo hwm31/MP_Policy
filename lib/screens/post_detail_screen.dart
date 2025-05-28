@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../models/comment.dart';
 import '../services/firebase_service.dart';
+import '../services/auth_service.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -19,9 +20,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   bool _isLoadingLike = false;
   bool _isLoadingComment = false;
 
-  // 임시 사용자 ID (실제로는 Firebase Auth에서 가져와야 함)
-  final String _currentUserId = 'temp_user_123';
-  final String _currentUserName = '익명';
+  // AuthService에서 실제 사용자 정보 가져오기
+  String get _currentUserId => AuthService.currentUserId;
+  String get _currentUserName => AuthService.currentUserName;
 
   @override
   void initState() {
@@ -217,11 +218,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     stream: FirebaseService.getCommentsStream(widget.post.id),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
+                        print('댓글 스트림 에러: ${snapshot.error}');
                         return Container(
                           padding: EdgeInsets.all(20),
-                          child: Text(
-                            '댓글을 불러오는 중 오류가 발생했습니다.',
-                            style: TextStyle(color: Colors.red),
+                          child: Column(
+                            children: [
+                              Icon(Icons.error_outline, color: Colors.red, size: 48),
+                              SizedBox(height: 8),
+                              Text(
+                                '댓글을 불러올 수 없습니다.',
+                                style: TextStyle(color: Colors.red, fontSize: 16),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                '에러: ${snapshot.error}',
+                                style: TextStyle(color: Colors.grey, fontSize: 12),
+                              ),
+                              SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {}); // 화면 새로고침
+                                },
+                                child: Text('다시 시도'),
+                              ),
+                            ],
                           ),
                         );
                       }
@@ -230,23 +250,37 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         return Container(
                           padding: EdgeInsets.all(20),
                           child: Center(
-                            child: CircularProgressIndicator(color: Colors.green),
+                            child: Column(
+                              children: [
+                                CircularProgressIndicator(color: Colors.green),
+                                SizedBox(height: 8),
+                                Text('댓글을 불러오는 중...'),
+                              ],
+                            ),
                           ),
                         );
                       }
 
                       List<Comment> comments = snapshot.data ?? [];
+                      print('댓글 개수: ${comments.length}');
 
                       if (comments.isEmpty) {
                         return Container(
                           padding: EdgeInsets.all(20),
                           child: Center(
-                            child: Text(
-                              '첫 번째 댓글을 남겨보세요!',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 16,
-                              ),
+                            child: Column(
+                              children: [
+                                Icon(Icons.chat_bubble_outline,
+                                    color: Colors.grey.shade400, size: 48),
+                                SizedBox(height: 8),
+                                Text(
+                                  '첫 번째 댓글을 남겨보세요!',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -465,23 +499,29 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Future<void> _addComment() async {
-    if (_commentController.text.trim().isEmpty) return;
+    String commentText = _commentController.text.trim();
+    if (commentText.isEmpty) return;
 
     setState(() {
       _isLoadingComment = true;
     });
 
     try {
+      print('댓글 작성 시작: $commentText');
+
       final newComment = Comment(
         id: '', // Firestore에서 자동 생성
         postId: widget.post.id,
         author: _currentUserName,
-        content: _commentController.text.trim(),
+        content: commentText,
         createdAt: DateTime.now(),
         isAuthor: widget.post.author == _currentUserName,
       );
 
+      print('댓글 데이터: ${newComment.toFirestore()}');
+
       bool success = await FirebaseService.createComment(newComment);
+      print('댓글 작성 결과: $success');
 
       if (success) {
         _commentController.clear();
@@ -489,20 +529,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           SnackBar(
             content: Text('댓글이 등록되었습니다.'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
           ),
         );
+      } else {
+        throw Exception('댓글 작성에 실패했습니다.');
       }
     } catch (e) {
+      print('댓글 작성 에러: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('댓글 등록 중 오류가 발생했습니다.'),
+          content: Text('댓글 등록 중 오류가 발생했습니다: ${e.toString()}'),
           backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
         ),
       );
     } finally {
-      setState(() {
-        _isLoadingComment = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingComment = false;
+        });
+      }
     }
   }
 
