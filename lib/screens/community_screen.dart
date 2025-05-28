@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../widgets/post_card.dart';
+import '../services/firebase_service.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 
@@ -14,96 +15,11 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   final List<String> categories = ['전체', '질문', '정보', '후기'];
 
-  // 더미 데이터 (나중에 Firebase로 대체)
-  List<Post> posts = [
-    Post(
-      id: '1',
-      title: '2025 IT 인재 양성 프로그램 후기',
-      content: '6개월 과정 끝나고 취업까지 성공했어요! 합격 꿀팁들도 프로그램 참여 노하우까지 공유합니다.\n\n시간디자인과 좋지 후 IT 개발로 취업을 하고 싶어 지원하게 되었고, 팀 디자인 프로젝트 3개 진행했습니다. 지금 비슷하게 IT 직무 야나 분들도 많이 협력하셨으면 좋을 인 허서도 대인 프로그램에는 핵심 적극적으로 질문하시는 게 중요합니다. 질문을 많이 할수록 더 좋은 기회들이 와이오답니다고요!',
-      category: '후기',
-      author: '성철남',
-      createdAt: DateTime.now().subtract(Duration(hours: 8)),
-      likes: 345,
-      comments: 30,
-      isHot: true,
-    ),
-    Post(
-      id: '2',
-      title: '청년 정책 간담회 안내',
-      content: '김태진 국회의원 · 1일 전\n경기도 성남시에서 다음 주 참여할 온라인으로 정부 정책 간담회를 개최합니다. 많은 참여...',
-      category: '정보',
-      author: '김태진',
-      createdAt: DateTime.now().subtract(Duration(days: 1)),
-      likes: 200,
-      comments: 10,
-    ),
-    Post(
-      id: '3',
-      title: '창업 지원금 신청 자격 질문',
-      content: '최근 창업에 관련해서 질문입니다. 사업자등록증을 하지 않은 상태에서도 신청 가능한지요?',
-      category: '질문',
-      author: '김창업',
-      createdAt: DateTime.now().subtract(Duration(days: 1)),
-      likes: 6,
-      comments: 8,
-    ),
-    Post(
-      id: '4',
-      title: '서울시 청년 일자리 카페 위치 정보',
-      content: '서울시 각 지역별 청년 일자리 카페 위치 정보를 공유합니다. 근처에 시설이 있다면 방문...',
-      category: '정보',
-      author: '서울청년',
-      createdAt: DateTime.now().subtract(Duration(days: 2)),
-      likes: 125,
-      comments: 20,
-    ),
-    Post(
-      id: '5',
-      title: '국민취업지원제도 후기',
-      content: '국민취업지원제도 1유형으로 6개월간 참여했습니다. 월 50만원 지원받으면서 취업 성공했어요!',
-      category: '후기',
-      author: '취업성공자',
-      createdAt: DateTime.now().subtract(Duration(days: 3)),
-      likes: 189,
-      comments: 25,
-    ),
-    Post(
-      id: '6',
-      title: '청년 주거급여 신청 방법 질문',
-      content: '부모님과 따로 살고 있는데 청년 주거급여 신청이 가능한가요? 조건이 궁금합니다.',
-      category: '질문',
-      author: '주거고민청년',
-      createdAt: DateTime.now().subtract(Duration(days: 4)),
-      likes: 45,
-      comments: 15,
-    ),
-    Post(
-      id: '7',
-      title: '2025년 청년 창업 지원 정책 총정리',
-      content: '올해 달라진 청년 창업 지원 정책들을 정리해봤습니다. K-스타트업, 창업진흥원 등...',
-      category: '정보',
-      author: '정책연구원',
-      createdAt: DateTime.now().subtract(Duration(days: 5)),
-      likes: 267,
-      comments: 42,
-    ),
-    Post(
-      id: '8',
-      title: '디지털 노마드 비자 신청 후기',
-      content: '해외에서 원격근무하며 일하고 싶어서 디지털 노마드 비자를 신청했습니다. 과정 공유드려요.',
-      category: '후기',
-      author: '디지털노마드',
-      createdAt: DateTime.now().subtract(Duration(days: 6)),
-      likes: 156,
-      comments: 28,
-    ),
-  ];
-
-  List<Post> get filteredPosts {
-    if (_selectedCategory == '전체') {
-      return posts;
-    }
-    return posts.where((post) => post.category == _selectedCategory).toList();
+  @override
+  void initState() {
+    super.initState();
+    // 앱 시작 시 한 번만 더미 데이터 추가
+    FirebaseService.addInitialData();
   }
 
   @override
@@ -169,48 +85,124 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ),
           ),
 
-          // 필터 결과 표시
-          if (_selectedCategory != '전체')
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Text(
-                    '${_selectedCategory} 카테고리',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    '총 ${filteredPosts.length}개',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // 게시글 목록
+          // Firebase에서 실시간으로 게시글 목록 가져오기
           Expanded(
-            child: ListView.builder(
-              itemCount: filteredPosts.length,
-              itemBuilder: (context, index) {
-                final post = filteredPosts[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PostDetailScreen(post: post),
+            child: StreamBuilder<List<Post>>(
+              stream: FirebaseService.getPostsStream(
+                category: _selectedCategory == '전체' ? null : _selectedCategory,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 64, color: Colors.red),
+                        SizedBox(height: 16),
+                        Text(
+                          '데이터를 불러오는 중 오류가 발생했습니다.',
+                          style: TextStyle(fontSize: 16, color: Colors.red),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Firebase 연결을 확인해주세요.',
+                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(color: Colors.green),
+                        SizedBox(height: 16),
+                        Text(
+                          '게시글을 불러오는 중...',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final posts = snapshot.data ?? [];
+
+                if (posts.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.article_outlined, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          _selectedCategory == '전체'
+                              ? '아직 작성된 게시글이 없습니다.'
+                              : '${_selectedCategory} 카테고리에 게시글이 없습니다.',
+                          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '첫 번째 글을 작성해보세요!',
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: [
+                    // 필터 결과 표시
+                    if (_selectedCategory != '전체')
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${_selectedCategory} 카테고리',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '총 ${posts.length}개',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  },
-                  child: PostCard(post: post),
+
+                    // 게시글 목록
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          final post = posts[index];
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PostDetailScreen(post: post),
+                                ),
+                              );
+                            },
+                            child: PostCard(post: post),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -228,11 +220,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
               MaterialPageRoute(
                 builder: (context) => CreatePostScreen(),
               ),
-            ).then((newPost) {
-              if (newPost != null) {
-                setState(() {
-                  posts.insert(0, newPost);
-                });
+            ).then((result) {
+              if (result == true) {
+                // 글 작성 성공 시 스낵바 표시
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('게시글이 성공적으로 작성되었습니다!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               }
             });
           },

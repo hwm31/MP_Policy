@@ -12,14 +12,11 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase (나중에 추가할 때 사용)
-  # firebase_core: ^2.24.2
-  # firebase_auth: ^4.15.3
-  # cloud_firestore: ^4.13.6
-  # firebase_storage: ^11.6.0
-
-  # 상태 관리 (나중에 필요시)
-  # provider: ^6.1.1
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  firebase_storage: ^11.6.0
 
   cupertino_icons: ^1.0.2
 
@@ -30,11 +27,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  # 폰트 추가 (선택사항)
-  # fonts:
-  #   - family: NotoSansKR
-  #     fonts:
-  #       - asset: fonts/NotoSansKR-Regular.ttf
-  #       - asset: fonts/NotoSansKR-Bold.ttf
-  #         weight: 700

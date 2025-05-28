@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Post {
   final String id;
   final String title;
@@ -21,7 +23,37 @@ class Post {
     this.isHot = false,
   });
 
-  // JSON 변환용 (나중에 Firebase용)
+  // Firestore에서 데이터를 가져올 때 사용
+  factory Post.fromFirestore(DocumentSnapshot doc) {
+    Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+    return Post(
+      id: doc.id,
+      title: data['title'] ?? '',
+      content: data['content'] ?? '',
+      category: data['category'] ?? '',
+      author: data['author'] ?? '',
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      likes: data['likes'] ?? 0,
+      comments: data['comments'] ?? 0,
+      isHot: data['isHot'] ?? false,
+    );
+  }
+
+  // Firestore에 데이터를 저장할 때 사용
+  Map<String, dynamic> toFirestore() {
+    return {
+      'title': title,
+      'content': content,
+      'category': category,
+      'author': author,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'likes': likes,
+      'comments': comments,
+      'isHot': isHot,
+    };
+  }
+
+  // JSON 변환용 (기존 호환성)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
