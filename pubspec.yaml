@@ -12,11 +12,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.15.3
-  cloud_firestore: ^4.13.6
-  firebase_storage: ^11.6.0
+  # Firebase (안정적인 버전으로 다운그레이드)
+  firebase_core: ^2.15.0
+  cloud_firestore: ^4.8.2
 
   cupertino_icons: ^1.0.2
 
