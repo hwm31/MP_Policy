@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.green,
         fontFamily: 'NotoSansKR',
       ),
-      home: AuthWrapper(), // 인증 상태에 따라 화면 결정
+      home: AuthWrapper(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -38,47 +38,47 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder(
       stream: AuthService.authStateChanges,
       builder: (context, snapshot) {
+        // 연결 상태 확인
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return SplashScreen(); // 로딩 중일 때 스플래시 화면
+          return SplashScreen();
         }
 
-        if (snapshot.hasData && AuthService.isLoggedIn) {
-          return SplashToMainTransition(); // 로그인 되어 있으면 스플래시 후 메인 앱
+        // 에러 처리
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text('오류가 발생했습니다: ${snapshot.error}'),
+                  ElevatedButton(
+                    onPressed: () {
+                      // 앱 재시작 로직
+                    },
+                    child: Text('다시 시도'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // 로그인 상태에 따른 화면 분기
+        if (snapshot.hasData && snapshot.data != null) {
+          // 로그인된 상태 - 메인 앱 표시
+          return MainNavigation();
         } else {
-          return LoginScreen(); // 로그인 안 되어 있으면 로그인 화면
+          // 로그인되지 않은 상태 - 로그인 화면 표시
+          return LoginScreen();
         }
       },
     );
   }
 }
 
-// 스플래시 화면 후 메인 앱으로 전환
-class SplashToMainTransition extends StatefulWidget {
-  @override
-  _SplashToMainTransitionState createState() => _SplashToMainTransitionState();
-}
-
-class _SplashToMainTransitionState extends State<SplashToMainTransition> {
-  @override
-  void initState() {
-    super.initState();
-    // 3초 후 메인 앱으로 이동
-    Future.delayed(Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => MainNavigation()),
-        );
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SplashScreen();
-  }
-}
-
-// 스플래시 화면 (토끼 캐릭터 3초 표시)
+// 스플래시 화면
 class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -139,7 +139,7 @@ class SplashScreen extends StatelessWidget {
   }
 }
 
-// 메인 네비게이션 (로그인 후에만 표시)
+// 메인 네비게이션
 class MainNavigation extends StatefulWidget {
   @override
   _MainNavigationState createState() => _MainNavigationState();
@@ -149,10 +149,10 @@ class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
 
   final List<Widget> _screens = [
-    HomeScreen(),          // 홈 화면
-    PolicyScreen(),        // 정책 화면
-    CommunityScreen(),     // 커뮤니티 화면
-    SettingScreen(),       // 설정 화면 (로그아웃 기능 포함)
+    HomeScreen(),
+    PolicyScreen(),
+    CommunityScreen(),
+    SettingScreen(),
   ];
 
   void _onItemTapped(int index) {

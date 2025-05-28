@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -8,6 +10,12 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _forgotPasswordController = TextEditingController();
+  final _signUpEmailController = TextEditingController();
+  final _signUpPasswordController = TextEditingController();
+  final _signUpConfirmPasswordController = TextEditingController();
+
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       SizedBox(height: 8),
                       TextField(
                         controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: !_isLoading,
                         decoration: InputDecoration(
                           border: UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey.shade300),
@@ -62,6 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderSide: BorderSide(color: Colors.green, width: 2),
                           ),
                           contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          hintText: 'example@email.com',
                         ),
                       ),
                     ],
@@ -93,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextField(
                         controller: _passwordController,
                         obscureText: true,
+                        enabled: !_isLoading,
                         decoration: InputDecoration(
                           border: UnderlineInputBorder(
                             borderSide: BorderSide(color: Colors.grey.shade300),
@@ -101,6 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderSide: BorderSide(color: Colors.green, width: 2),
                           ),
                           contentPadding: EdgeInsets.symmetric(vertical: 8),
+                          hintText: '••••••••',
                         ),
                       ),
                     ],
@@ -114,9 +127,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
-                      _login();
-                    },
+                    onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
@@ -125,7 +136,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       elevation: 0,
                     ),
-                    child: Text(
+                    child: _isLoading
+                        ? SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : Text(
                       'Sign In',
                       style: TextStyle(
                         fontSize: 16,
@@ -139,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Forgot Password 링크
                 TextButton(
-                  onPressed: () {
+                  onPressed: _isLoading ? null : () {
                     _showForgotPasswordDialog();
                   },
                   child: Text(
@@ -165,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () {
+                      onTap: _isLoading ? null : () {
                         _showSignUpDialog();
                       },
                       child: Text(
@@ -187,36 +207,135 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _login() {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('이메일과 비밀번호를 입력해주세요.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  // 실제 Firebase 로그인 처리
+  Future<void> _login() async {
+    if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
+      _showErrorSnackBar('이메일과 비밀번호를 입력해주세요.');
       return;
     }
 
+    // 이메일 형식 간단 검증
+    if (!_emailController.text.contains('@')) {
+      _showErrorSnackBar('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      UserCredential? result = await AuthService.signInWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (result != null) {
+        // 로그인 성공 - AuthWrapper가 자동으로 메인 화면으로 전환
+        _showSuccessSnackBar('로그인 성공!');
+      } else {
+        _showErrorSnackBar('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = _getErrorMessage(e.code);
+      _showErrorSnackBar(errorMessage);
+    } catch (e) {
+      _showErrorSnackBar('로그인 중 오류가 발생했습니다: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Firebase 에러 메시지 변환
+  String _getErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'user-not-found':
+        return '등록되지 않은 이메일입니다.';
+      case 'wrong-password':
+        return '비밀번호가 잘못되었습니다.';
+      case 'invalid-email':
+        return '올바른 이메일 형식을 입력해주세요.';
+      case 'user-disabled':
+        return '비활성화된 계정입니다.';
+      case 'too-many-requests':
+        return '너무 많은 로그인 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
+      case 'network-request-failed':
+        return '네트워크 연결을 확인해주세요.';
+      default:
+        return '로그인에 실패했습니다. 다시 시도해주세요.';
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('로그인 성공!'),
-        backgroundColor: Colors.green,
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
       ),
     );
   }
 
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // 비밀번호 찾기 다이얼로그
   void _showForgotPasswordDialog() {
+    _forgotPasswordController.clear();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('비밀번호 찾기'),
-          content: Text('등록된 이메일로 비밀번호 재설정 링크를 보내드립니다.'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('등록된 이메일로 비밀번호 재설정 링크를 보내드립니다.'),
+              SizedBox(height: 16),
+              TextField(
+                controller: _forgotPasswordController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: '이메일을 입력하세요',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('확인'),
+              child: Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (_forgotPasswordController.text.trim().isNotEmpty) {
+                  try {
+                    await AuthService.sendPasswordResetEmail(
+                        _forgotPasswordController.text.trim()
+                    );
+                    Navigator.of(context).pop();
+                    _showSuccessSnackBar('비밀번호 재설정 이메일을 보냈습니다.');
+                  } catch (e) {
+                    _showErrorSnackBar('이메일 전송에 실패했습니다.');
+                  }
+                } else {
+                  _showErrorSnackBar('이메일을 입력해주세요.');
+                }
+              },
+              child: Text('전송'),
             ),
           ],
         );
@@ -224,28 +343,128 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // 회원가입 다이얼로그
   void _showSignUpDialog() {
+    _signUpEmailController.clear();
+    _signUpPasswordController.clear();
+    _signUpConfirmPasswordController.clear();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('회원가입'),
-          content: Text('회원가입 기능은 준비 중입니다.'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _signUpEmailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: '이메일',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _signUpPasswordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: '비밀번호 (6자 이상)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _signUpConfirmPasswordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: '비밀번호 확인',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('확인'),
+              child: Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await _handleSignUp();
+              },
+              child: Text('가입'),
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _handleSignUp() async {
+    String email = _signUpEmailController.text.trim();
+    String password = _signUpPasswordController.text;
+    String confirmPassword = _signUpConfirmPasswordController.text;
+
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showErrorSnackBar('모든 필드를 입력해주세요.');
+      return;
+    }
+
+    if (!email.contains('@')) {
+      _showErrorSnackBar('올바른 이메일 형식을 입력해주세요.');
+      return;
+    }
+
+    if (password.length < 6) {
+      _showErrorSnackBar('비밀번호는 6자 이상이어야 합니다.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showErrorSnackBar('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
+    try {
+      UserCredential? result = await AuthService.signUpWithEmailAndPassword(email, password);
+
+      if (result != null) {
+        Navigator.of(context).pop();
+        _showSuccessSnackBar('회원가입이 완료되었습니다!');
+      } else {
+        _showErrorSnackBar('회원가입에 실패했습니다.');
+      }
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = _getSignUpErrorMessage(e.code);
+      _showErrorSnackBar(errorMessage);
+    } catch (e) {
+      _showErrorSnackBar('회원가입 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  String _getSignUpErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case 'weak-password':
+        return '비밀번호가 너무 약합니다.';
+      case 'email-already-in-use':
+        return '이미 사용 중인 이메일입니다.';
+      case 'invalid-email':
+        return '올바른 이메일 형식을 입력해주세요.';
+      default:
+        return '회원가입에 실패했습니다. 다시 시도해주세요.';
+    }
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _forgotPasswordController.dispose();
+    _signUpEmailController.dispose();
+    _signUpPasswordController.dispose();
+    _signUpConfirmPasswordController.dispose();
     super.dispose();
   }
 }

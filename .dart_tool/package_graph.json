@@ -60,7 +60,7 @@
     },
     {
       "name": "cloud_firestore",
-      "version": "4.17.5",
+      "version": "5.6.8",
       "dependencies": [
         "cloud_firestore_platform_interface",
         "cloud_firestore_web",
@@ -73,7 +73,7 @@
     },
     {
       "name": "firebase_auth",
-      "version": "4.16.0",
+      "version": "5.5.4",
       "dependencies": [
         "firebase_auth_platform_interface",
         "firebase_auth_web",
@@ -85,7 +85,7 @@
     },
     {
       "name": "firebase_core",
-      "version": "2.32.0",
+      "version": "3.13.1",
       "dependencies": [
         "firebase_core_platform_interface",
         "firebase_core_web",
@@ -281,7 +281,7 @@
     },
     {
       "name": "cloud_firestore_web",
-      "version": "3.12.5",
+      "version": "4.4.8",
       "dependencies": [
         "_flutterfire_internals",
         "cloud_firestore_platform_interface",
@@ -294,7 +294,7 @@
     },
     {
       "name": "cloud_firestore_platform_interface",
-      "version": "6.2.5",
+      "version": "6.6.8",
       "dependencies": [
         "_flutterfire_internals",
         "collection",
@@ -306,7 +306,7 @@
     },
     {
       "name": "firebase_auth_web",
-      "version": "5.8.13",
+      "version": "5.14.3",
       "dependencies": [
         "firebase_auth_platform_interface",
         "firebase_core",
@@ -314,13 +314,13 @@
         "flutter",
         "flutter_web_plugins",
         "http_parser",
-        "js",
-        "meta"
+        "meta",
+        "web"
       ]
     },
     {
       "name": "firebase_auth_platform_interface",
-      "version": "7.3.0",
+      "version": "7.6.3",
       "dependencies": [
         "_flutterfire_internals",
         "collection",
@@ -367,7 +367,7 @@
     },
     {
       "name": "_flutterfire_internals",
-      "version": "1.3.35",
+      "version": "1.3.55",
       "dependencies": [
         "collection",
         "firebase_core",
@@ -377,11 +377,9 @@
       ]
     },
     {
-      "name": "js",
-      "version": "0.6.7",
-      "dependencies": [
-        "meta"
-      ]
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
     },
     {
       "name": "http_parser",
@@ -392,11 +390,6 @@
         "string_scanner",
         "typed_data"
       ]
-    },
-    {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
     },
     {
       "name": "typed_data",
