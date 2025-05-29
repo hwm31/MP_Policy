@@ -48,11 +48,33 @@ class FirebaseService {
 
   // 댓글 관련 기능들
 
-  // 특정 게시글의 댓글 목록 가져오기
+  // 특정 게시글의 댓글 목록 가져오기 (수정된 버전)
   static Stream<List<Comment>> getCommentsStream(String postId) {
     return _commentsCollection
         .where('postId', isEqualTo: postId)
-        .orderBy('createdAt', descending: false)
+    // orderBy 제거 - 인덱스 오류 해결
+        .snapshots()
+        .map((snapshot) {
+      List<Comment> comments = snapshot.docs.map((doc) => Comment.fromFirestore(doc)).toList();
+
+      // 클라이언트에서 정렬 (최신순으로 변경)
+      comments.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!); // 최신순 정렬
+      });
+
+      return comments;
+    });
+  }
+
+  // 대안: 인덱스가 완성되면 사용할 수 있는 서버 정렬 버전
+  static Stream<List<Comment>> getCommentsStreamWithServerSort(String postId) {
+    // 인덱스가 완성되면 이 함수를 사용
+    return _commentsCollection
+        .where('postId', isEqualTo: postId)
+        .orderBy('createdAt', descending: true)  // 최신순
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) => Comment.fromFirestore(doc)).toList();

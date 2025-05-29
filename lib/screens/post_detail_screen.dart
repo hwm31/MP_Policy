@@ -29,6 +29,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     super.initState();
     _likeCount = widget.post.likes;
     _checkIfLiked();
+
+    // 댓글 입력 필드 변화 감지 (전송 버튼 활성화/비활성화)
+    _commentController.addListener(() {
+      setState(() {
+        // 텍스트가 변경될 때마다 UI 업데이트
+      });
+    });
   }
 
   // 사용자가 이미 좋아요를 했는지 확인
@@ -308,69 +315,94 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(top: BorderSide(color: Colors.grey.shade200)),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Colors.green.shade100,
-                  child: Icon(
-                    Icons.person,
-                    color: Colors.green,
-                    size: 18,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    enabled: !_isLoadingComment,
-                    decoration: InputDecoration(
-                      hintText: '댓글을 입력하세요...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide(color: Colors.green),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 8),
-                GestureDetector(
-                  onTap: (_isLoadingComment || _commentController.text.trim().isEmpty)
-                      ? null
-                      : _addComment,
-                  child: Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (_isLoadingComment || _commentController.text.trim().isEmpty)
-                          ? Colors.grey.shade300
-                          : Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    child: _isLoadingComment
-                        ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                        : Icon(
-                      Icons.send,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: Offset(0, -2),
                 ),
               ],
             ),
-          ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.green.shade100,
+                    child: Icon(
+                      Icons.person,
+                      color: Colors.green,
+                      size: 18,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      enabled: !_isLoadingComment,
+                      decoration: InputDecoration(
+                        hintText: '댓글을 입력하세요...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide(color: Colors.green, width: 2),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                      maxLines: null,
+                      minLines: 1,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _addComment(), // 엔터키로 전송
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: (_isLoadingComment || _commentController.text.trim().isEmpty)
+                        ? null
+                        : _addComment,
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: (_isLoadingComment || _commentController.text.trim().isEmpty)
+                            ? Colors.grey.shade300
+                            : Colors.green,
+                        shape: BoxShape.circle,
+                        boxShadow: (_isLoadingComment || _commentController.text.trim().isEmpty)
+                            ? []
+                            : [
+                          BoxShadow(
+                            color: Colors.green.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: _isLoadingComment
+                          ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                          : Icon(
+                        Icons.send,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
         ],
       ),
     );
@@ -498,9 +530,30 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
+  // PostDetailScreen의 _addComment 메서드를 이렇게 교체하세요:
+
   Future<void> _addComment() async {
     String commentText = _commentController.text.trim();
-    if (commentText.isEmpty) return;
+    if (commentText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('댓글을 입력해주세요.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // 로그인 확인
+    if (!AuthService.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('로그인이 필요합니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoadingComment = true;
@@ -508,14 +561,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
     try {
       print('댓글 작성 시작: $commentText');
+      print('현재 사용자: ${AuthService.currentUserName} (${AuthService.currentUserId})');
 
       final newComment = Comment(
         id: '', // Firestore에서 자동 생성
         postId: widget.post.id,
-        author: _currentUserName,
+        author: AuthService.currentUserName.isNotEmpty
+            ? AuthService.currentUserName
+            : '익명',
+        authorId: AuthService.currentUserId,  // 추가
         content: commentText,
         createdAt: DateTime.now(),
-        isAuthor: widget.post.author == _currentUserName,
+        isAuthor: widget.post.author == AuthService.currentUserName,
       );
 
       print('댓글 데이터: ${newComment.toFirestore()}');
@@ -525,6 +582,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
       if (success) {
         _commentController.clear();
+        FocusScope.of(context).unfocus();
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('댓글이 등록되었습니다.'),
@@ -579,7 +638,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
-  String _getTimeAgo(DateTime dateTime) {
+  String _getTimeAgo(DateTime? dateTime) {
+    if (dateTime == null) return '알 수 없음';
+
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
