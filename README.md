@@ -135,7 +135,7 @@ lib/
 
 | Role | Name | Student ID | GitHub |
 |------|------|------------|--------|
-| **Team Leader & Community** | inhwa Son | 202334484 | [@inhwa Son](https://github.com/hwm31) |
+| **Team Leader & Community** | Inhwa Son | 202334484 | [@Inhwa Son](https://github.com/hwm31) |
 | **Home** | Team Member 2 | 2021XXXXX | [@member2](https://github.com/member2) |
 | **Policy** | Team Member 3 | 2021XXXXX | [@member3](https://github.com/member3) |
 | **Login/Profile** | Team Member 4 | 2021XXXXX | [@member4](https://github.com/member4) |
