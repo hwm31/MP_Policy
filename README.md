@@ -1,4 +1,4 @@
-# 🐰 Youth Job Policy Evaluation App
+# 👩🏻‍💼🧑🏻‍💼 Youth Job Policy Evaluation App
 ## 📱 Mobile Programming Team 9
 
 > **A comprehensive platform for youth policy evaluation and community engagement**  
