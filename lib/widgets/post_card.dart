@@ -168,7 +168,9 @@ class PostCard extends StatelessWidget {
     }
   }
 
-  String _getTimeAgo(DateTime dateTime) {
+  String _getTimeAgo(DateTime? dateTime) {  
+    if (dateTime == null) return '알 수 없음';
+
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 

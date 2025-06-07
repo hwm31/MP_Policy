@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/post.dart';
 import '../widgets/post_card.dart';
 import '../services/firebase_service.dart';
+import '../services/auth_service.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
+import 'my_posts_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
   @override
@@ -43,6 +45,139 @@ class _CommunityScreenState extends State<CommunityScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+        actions: [
+          // 디버깅용 사용자 정보 확인 버튼 (임시)
+          IconButton(
+            onPressed: () {
+              _showUserDebugInfo();
+            },
+            icon: Icon(Icons.bug_report, color: Colors.purple),
+            tooltip: '사용자 정보 확인',
+          ),
+          // 현재 사용자 정보 표시
+          if (AuthService.isLoggedIn)
+            Container(
+              margin: EdgeInsets.only(right: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 사용자명 표시
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      AuthService.currentUserName.isEmpty
+                          ? '익명'
+                          : AuthService.currentUserName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  // 프로필 설정 버튼 (displayName이 없는 경우)
+                  if (AuthService.currentUserName.isEmpty ||
+                      AuthService.currentUserName.startsWith('user_'))
+                    IconButton(
+                      onPressed: () {
+                        _showProfileSetupDialog();
+                      },
+                      icon: Icon(Icons.edit, size: 16, color: Colors.orange),
+                      tooltip: '이름 설정',
+                    ),
+                ],
+              ),
+            ),
+          // 내가 쓴 글 보기 버튼
+          IconButton(
+            onPressed: () {
+              if (!AuthService.isLoggedIn) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('로그인이 필요합니다.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                return;
+              }
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MyPostsScreen(),
+                ),
+              );
+            },
+            icon: Icon(Icons.person, color: Colors.green.shade700),
+            tooltip: '내가 쓴 글',
+          ),
+          // 메뉴 버튼
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'my_posts') {
+                if (!AuthService.isLoggedIn) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('로그인이 필요합니다.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MyPostsScreen(),
+                  ),
+                );
+              } else if (value == 'logout') {
+                _handleLogout();
+              } else if (value == 'profile') {
+                _showProfileSetupDialog();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              if (AuthService.isLoggedIn) ...[
+                PopupMenuItem<String>(
+                  value: 'my_posts',
+                  child: Row(
+                    children: [
+                      Icon(Icons.article, color: Colors.green, size: 20),
+                      SizedBox(width: 8),
+                      Text('내가 쓴 글'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, color: Colors.blue, size: 20),
+                      SizedBox(width: 8),
+                      Text('이름 변경'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      Icon(Icons.logout, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('로그아웃'),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+            icon: Icon(Icons.more_vert, color: Colors.black),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -239,6 +374,172 @@ class _CommunityScreenState extends State<CommunityScreen> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  // 프로필 설정 다이얼로그
+  void _showProfileSetupDialog() {
+    final _nameController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('이름 설정'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('커뮤니티에서 사용할 이름을 설정해주세요.'),
+              SizedBox(height: 16),
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(
+                  hintText: '이름 (예: 홍길동)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                String name = _nameController.text.trim();
+                if (name.isNotEmpty) {
+                  bool success = await AuthService.updateProfile(displayName: name);
+                  if (success) {
+                    Navigator.of(context).pop();
+                    setState(() {}); // UI 새로고침
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('이름이 설정되었습니다: $name'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('이름 설정에 실패했습니다.'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('이름을 입력해주세요.'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+              child: Text('저장'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 사용자 정보 디버깅 다이얼로그
+  void _showUserDebugInfo() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('현재 사용자 정보'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('로그인 상태: ${AuthService.isLoggedIn}'),
+                SizedBox(height: 8),
+                Text('사용자 ID: ${AuthService.currentUserId}'),
+                SizedBox(height: 8),
+                Text('사용자 이름: "${AuthService.currentUserName}"'),
+                SizedBox(height: 8),
+                Text('이메일: ${AuthService.currentUser?.email ?? "없음"}'),
+                SizedBox(height: 8),
+                Text('DisplayName: "${AuthService.currentUser?.displayName ?? "없음"}"'),
+                SizedBox(height: 16),
+                Text('Firebase의 게시글 작성자: "이명"'),
+                SizedBox(height: 8),
+                Text('일치 여부: ${AuthService.currentUserName == "이명" ? "일치" : "불일치"}'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('확인'),
+            ),
+            // 강제로 이름을 "이명"으로 설정하는 버튼
+            TextButton(
+              onPressed: () async {
+                bool success = await AuthService.updateProfile(displayName: "이명");
+                if (success) {
+                  Navigator.of(context).pop();
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('이름을 "이명"으로 설정했습니다'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('이름 설정 실패'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: Text('이름을 "이명"으로 설정'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 로그아웃 처리
+  void _handleLogout() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('로그아웃'),
+          content: Text('정말 로그아웃하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('취소'),
+            ),
+            TextButton(
+              onPressed: () async {
+                bool success = await AuthService.signOut();
+                Navigator.of(context).pop();
+                if (success) {
+                  setState(() {}); // UI 새로고침
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('로그아웃되었습니다.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              child: Text('로그아웃', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

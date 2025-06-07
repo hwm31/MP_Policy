@@ -6,7 +6,8 @@ class Post {
   final String content;
   final String category;
   final String author;
-  final DateTime createdAt;
+  final String? authorId; // 추가: 사용자 ID로 더 정확한 본인 글 판별
+  final DateTime? createdAt;
   final int likes;
   final int comments;
   final bool isHot;
@@ -17,7 +18,8 @@ class Post {
     required this.content,
     required this.category,
     required this.author,
-    required this.createdAt,
+    this.authorId, // 추가
+    this.createdAt,
     this.likes = 0,
     this.comments = 0,
     this.isHot = false,
@@ -26,13 +28,25 @@ class Post {
   // Firestore에서 데이터를 가져올 때 사용
   factory Post.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+    DateTime? createdAtDate;
+    try {
+      if (data['createdAt'] != null) {
+        createdAtDate = (data['createdAt'] as Timestamp).toDate();
+      }
+    } catch (e) {
+      print('createdAt 파싱 오류: $e');
+      createdAtDate = DateTime.now();
+    }
+
     return Post(
       id: doc.id,
       title: data['title'] ?? '',
       content: data['content'] ?? '',
       category: data['category'] ?? '',
-      author: data['author'] ?? '',
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      author: data['author'] ?? '익명',
+      authorId: data['authorId'], // 추가
+      createdAt: createdAtDate,
       likes: data['likes'] ?? 0,
       comments: data['comments'] ?? 0,
       isHot: data['isHot'] ?? false,
@@ -46,39 +60,18 @@ class Post {
       'content': content,
       'category': category,
       'author': author,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'authorId': authorId, // 추가
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'likes': likes,
       'comments': comments,
       'isHot': isHot,
     };
   }
 
-  // JSON 변환용 (기존 호환성)
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'content': content,
-      'category': category,
-      'author': author,
-      'createdAt': createdAt.toIso8601String(),
-      'likes': likes,
-      'comments': comments,
-      'isHot': isHot,
-    };
-  }
-
-  factory Post.fromJson(Map<String, dynamic> json) {
-    return Post(
-      id: json['id'],
-      title: json['title'],
-      content: json['content'],
-      category: json['category'],
-      author: json['author'],
-      createdAt: DateTime.parse(json['createdAt']),
-      likes: json['likes'] ?? 0,
-      comments: json['comments'] ?? 0,
-      isHot: json['isHot'] ?? false,
-    );
+  @override
+  String toString() {
+    return 'Post{id: $id, title: $title, author: $author, authorId: $authorId}';
   }
 }

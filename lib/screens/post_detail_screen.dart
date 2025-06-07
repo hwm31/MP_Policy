@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // 추가
 import '../models/post.dart';
 import '../models/comment.dart';
 import '../services/firebase_service.dart';
 import '../services/auth_service.dart';
+import 'edit_post_screen.dart'; // EditPostScreen import 추가
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -30,6 +32,28 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _likeCount = widget.post.likes;
     _checkIfLiked();
 
+    // 강화된 디버깅 로그
+    print('=== PostDetailScreen 상세 디버깅 ===');
+    print('게시글 ID: "${widget.post.id}"');
+    print('게시글 제목: "${widget.post.title}"');
+    print('게시글 작성자 (원본): "${widget.post.author}"');
+    print('게시글 작성자 길이: ${widget.post.author.length}');
+    print('게시글 작성자 바이트: ${widget.post.author.codeUnits}');
+    print('---');
+    print('현재 로그인 상태: ${AuthService.isLoggedIn}');
+    print('현재 사용자 ID: "${AuthService.currentUserId}"');
+    print('현재 사용자 이름 (원본): "${AuthService.currentUserName}"');
+    print('현재 사용자 이름 길이: ${AuthService.currentUserName.length}');
+    print('현재 사용자 이름 바이트: ${AuthService.currentUserName.codeUnits}');
+    print('---');
+    print('문자열 비교 결과: ${widget.post.author == AuthService.currentUserName}');
+    print('trim 후 비교: "${widget.post.author.trim()}" == "${AuthService.currentUserName.trim()}"');
+    print('trim 비교 결과: ${widget.post.author.trim() == AuthService.currentUserName.trim()}');
+    print('===================================');
+
+    // Firebase에서 실제 저장된 데이터 확인
+    _checkFirebaseData();
+
     // 댓글 입력 필드 변화 감지 (전송 버튼 활성화/비활성화)
     _commentController.addListener(() {
       setState(() {
@@ -38,13 +62,138 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     });
   }
 
-  // 사용자가 이미 좋아요를 했는지 확인
+  // Firebase 데이터 직접 확인
+  Future<void> _checkFirebaseData() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(widget.post.id)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+        print('=== Firebase 실제 데이터 ===');
+        print('전체 데이터: $data');
+        print('author 필드: "${data?['author']}"');
+        print('author 타입: ${data?['author'].runtimeType}');
+        print('==========================');
+      }
+    } catch (e) {
+      print('Firebase 데이터 확인 오류: $e');
+    }
+  }
+
+  // 내가 쓴 글인지 확인하는 메서드 (이중 체크)
+  bool get _isMyPost {
+    // 1차: authorId로 비교 (가장 정확)
+    if (widget.post.authorId != null &&
+        widget.post.authorId!.isNotEmpty &&
+        widget.post.authorId == _currentUserId) {
+      print('authorId로 본인 글 확인됨');
+      return true;
+    }
+
+    // 2차: author 이름으로 비교 (호환성)
+    if (widget.post.author.trim() == _currentUserName.trim() &&
+        _currentUserName.trim().isNotEmpty) {
+      print('author 이름으로 본인 글 확인됨');
+      return true;
+    }
+
+    print('본인 글이 아님');
+    return false;
+  }
   Future<void> _checkIfLiked() async {
     bool liked = await FirebaseService.isLiked(widget.post.id, _currentUserId);
     if (mounted) {
       setState(() {
         _isLiked = liked;
       });
+    }
+  }
+
+  // 게시글 수정 화면으로 이동
+  void _navigateToEditPost() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditPostScreen(post: widget.post),
+      ),
+    ).then((result) {
+      if (result == true) {
+        // 수정 성공 시 현재 화면도 새로고침
+        setState(() {});
+      }
+    });
+  }
+
+  // 게시글 삭제 확인 다이얼로그
+  void _showDeleteDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('게시글 삭제'),
+          content: Text('정말로 이 게시글을 삭제하시겠습니까?\n삭제된 게시글은 복구할 수 없습니다.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('취소'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deletePost();
+              },
+              child: Text('삭제', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 게시글 삭제
+  Future<void> _deletePost() async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
+
+      bool success = await FirebaseService.deletePost(widget.post.id);
+
+      Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('게시글이 삭제되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(); // 이전 화면으로 돌아가기
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('게시글 삭제에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('오류가 발생했습니다: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -63,6 +212,42 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
+        actions: [
+          // 내가 쓴 글인 경우만 수정/삭제 버튼 표시
+          if (_isMyPost)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') {
+                  _navigateToEditPost();
+                } else if (value == 'delete') {
+                  _showDeleteDialog();
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, color: Colors.blue, size: 20),
+                      SizedBox(width: 8),
+                      Text('수정하기', style: TextStyle(color: Colors.blue)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('삭제하기', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+              icon: Icon(Icons.more_vert, color: Colors.black),
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -130,12 +315,42 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         SizedBox(height: 8),
 
                         // 작성자와 시간
-                        Text(
-                          '${widget.post.author} · ${_getTimeAgo(widget.post.createdAt)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              widget.post.author,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            // 내가 쓴 글인 경우 배지 표시
+                            if (_isMyPost)
+                              Container(
+                                margin: EdgeInsets.only(left: 6),
+                                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade100,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '작성자',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            Text(
+                              ' · ${_getTimeAgo(widget.post.createdAt)}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ),
 
                         SizedBox(height: 20),
@@ -409,7 +624,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Widget _buildCommentItem(Comment comment) {
-    bool isMyComment = comment.author == _currentUserName;
+    bool isMyComment = comment.authorId == _currentUserId;
+    bool isPostAuthor = comment.author == widget.post.author;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -418,10 +634,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: isMyComment ? Colors.blue.shade100 : Colors.grey.shade200,
+            backgroundColor: isMyComment
+                ? Colors.blue.shade100
+                : isPostAuthor
+                ? Colors.green.shade100
+                : Colors.grey.shade200,
             child: Icon(
               Icons.person,
-              color: isMyComment ? Colors.blue : Colors.grey.shade600,
+              color: isMyComment
+                  ? Colors.blue
+                  : isPostAuthor
+                  ? Colors.green
+                  : Colors.grey.shade600,
               size: 18,
             ),
           ),
@@ -440,7 +664,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         color: Colors.black87,
                       ),
                     ),
-                    if (comment.isAuthor)
+                    // 게시글 작성자 배지
+                    if (isPostAuthor)
                       Container(
                         margin: EdgeInsets.only(left: 6),
                         padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -457,6 +682,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           ),
                         ),
                       ),
+                    // 내 댓글 배지
                     if (isMyComment)
                       Container(
                         margin: EdgeInsets.only(left: 6),
@@ -466,7 +692,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '내 댓글',
+                          '나',
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.blue.shade700,
@@ -530,8 +756,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
-  // PostDetailScreen의 _addComment 메서드를 이렇게 교체하세요:
-
   Future<void> _addComment() async {
     String commentText = _commentController.text.trim();
     if (commentText.isEmpty) {
@@ -569,7 +793,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         author: AuthService.currentUserName.isNotEmpty
             ? AuthService.currentUserName
             : '익명',
-        authorId: AuthService.currentUserId,  // 추가
+        authorId: AuthService.currentUserId,
         content: commentText,
         createdAt: DateTime.now(),
         isAuthor: widget.post.author == AuthService.currentUserName,

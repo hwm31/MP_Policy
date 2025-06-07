@@ -14,6 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _signUpEmailController = TextEditingController();
   final _signUpPasswordController = TextEditingController();
   final _signUpConfirmPasswordController = TextEditingController();
+  final _signUpDisplayNameController = TextEditingController();
 
   bool _isLoading = false;
 
@@ -348,42 +349,58 @@ class _LoginScreenState extends State<LoginScreen> {
     _signUpEmailController.clear();
     _signUpPasswordController.clear();
     _signUpConfirmPasswordController.clear();
+    _signUpDisplayNameController.clear(); // 추가
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('회원가입'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _signUpEmailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: '이메일',
-                  border: OutlineInputBorder(),
+          content: SingleChildScrollView( // 스크롤 가능하게 변경
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 이름 입력 필드 추가
+                TextField(
+                  controller: _signUpDisplayNameController,
+                  decoration: InputDecoration(
+                    hintText: '이름 (예: 홍길동)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
                 ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _signUpPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: '비밀번호 (6자 이상)',
-                  border: OutlineInputBorder(),
+                SizedBox(height: 16),
+                TextField(
+                  controller: _signUpEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    hintText: '이메일',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email),
+                  ),
                 ),
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _signUpConfirmPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  hintText: '비밀번호 확인',
-                  border: OutlineInputBorder(),
+                SizedBox(height: 16),
+                TextField(
+                  controller: _signUpPasswordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: '비밀번호 (6자 이상)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
+                  ),
                 ),
-              ),
-            ],
+                SizedBox(height: 16),
+                TextField(
+                  controller: _signUpConfirmPasswordController,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    hintText: '비밀번호 확인',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -403,11 +420,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleSignUp() async {
+    String name = _signUpDisplayNameController.text.trim(); // 추가
     String email = _signUpEmailController.text.trim();
     String password = _signUpPasswordController.text;
     String confirmPassword = _signUpConfirmPasswordController.text;
 
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    // 유효성 검사 수정
+    if (name.isEmpty || email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
       _showErrorSnackBar('모든 필드를 입력해주세요.');
       return;
     }
@@ -428,11 +447,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      UserCredential? result = await AuthService.signUpWithEmailAndPassword(email, password);
+      // displayName과 함께 회원가입
+      UserCredential? result = await AuthService.signUpWithEmailAndPassword(
+        email,
+        password,
+        displayName: name, // 이름 전달
+      );
 
       if (result != null) {
         Navigator.of(context).pop();
-        _showSuccessSnackBar('회원가입이 완료되었습니다!');
+        _showSuccessSnackBar('회원가입이 완료되었습니다! 안녕하세요, $name님!');
+
+        // 사용자 정보 출력 (디버깅용)
+        print('=== 회원가입 완료 ===');
+        print('사용자명: ${AuthService.currentUserName}');
+        print('이메일: ${AuthService.currentUser?.email}');
+        print('====================');
       } else {
         _showErrorSnackBar('회원가입에 실패했습니다.');
       }
@@ -465,6 +495,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _signUpEmailController.dispose();
     _signUpPasswordController.dispose();
     _signUpConfirmPasswordController.dispose();
+    _signUpDisplayNameController.dispose(); // 추가
     super.dispose();
   }
 }

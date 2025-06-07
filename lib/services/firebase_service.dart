@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post.dart';
 import '../models/comment.dart';
+import '../services/auth_service.dart';
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -214,6 +215,56 @@ class FirebaseService {
       return true;
     } catch (e) {
       print('댓글 삭제 에러: $e');
+      return false;
+    }
+  }
+
+  // 내가 쓴 게시글 스트림
+  static Stream<List<Post>> getMyPostsStream({
+    required String userId,
+    String? category,
+  }) {
+    try {
+      // 기본 쿼리 - orderBy 제거하여 인덱스 오류 방지
+      Query query = _postsCollection.where('author', isEqualTo: AuthService.currentUserName);
+
+      if (category != null) {
+        query = query.where('category', isEqualTo: category);
+      }
+
+      return query.snapshots().map((snapshot) {
+        List<Post> posts = snapshot.docs.map((doc) {
+          return Post.fromFirestore(doc);
+        }).toList();
+
+        // 클라이언트 측에서 정렬 (최신순)
+        posts.sort((a, b) {
+          if (a.createdAt == null && b.createdAt == null) return 0;
+          if (a.createdAt == null) return 1;
+          if (b.createdAt == null) return -1;
+          return b.createdAt!.compareTo(a.createdAt!);
+        });
+
+        return posts;
+      });
+    } catch (e) {
+      print('내 게시글 스트림 에러: $e');
+      return Stream.value([]);
+    }
+  }
+
+  // 게시글 수정
+  static Future<bool> updatePost(String postId, Post updatedPost) async {
+    try {
+      await _postsCollection.doc(postId).update({
+        'title': updatedPost.title,
+        'content': updatedPost.content,
+        'category': updatedPost.category,
+        'updatedAt': Timestamp.fromDate(DateTime.now()), // 수정 시간 추가
+      });
+      return true;
+    } catch (e) {
+      print('게시글 수정 에러: $e');
       return false;
     }
   }

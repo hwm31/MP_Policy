@@ -6,7 +6,26 @@ class AuthService {
   // 현재 사용자 정보
   static User? get currentUser => _auth.currentUser;
   static String get currentUserId => _auth.currentUser?.uid ?? '';
-  static String get currentUserName => _auth.currentUser?.displayName ?? '';
+
+  // displayName이 없으면 이메일의 @ 앞부분을 사용
+  static String get currentUserName {
+    final user = _auth.currentUser;
+    if (user == null) return '';
+
+    // displayName이 있으면 사용
+    if (user.displayName != null && user.displayName!.isNotEmpty) {
+      return user.displayName!;
+    }
+
+    // displayName이 없으면 이메일의 @ 앞부분 사용
+    if (user.email != null && user.email!.isNotEmpty) {
+      return user.email!.split('@')[0];
+    }
+
+    // 둘 다 없으면 UID의 앞 8자리 사용
+    return 'user_${user.uid.substring(0, 8)}';
+  }
+
   static bool get isLoggedIn => _auth.currentUser != null;
 
   // 인증 상태 변화 스트림
@@ -15,13 +34,21 @@ class AuthService {
   // 이메일/패스워드로 회원가입
   static Future<UserCredential?> signUpWithEmailAndPassword(
       String email,
-      String password
+      String password,
+      {String? displayName} // displayName 매개변수 추가
       ) async {
     try {
       UserCredential result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // 회원가입 후 displayName 설정
+      if (displayName != null && displayName.isNotEmpty) {
+        await result.user?.updateDisplayName(displayName);
+        await result.user?.reload(); // 사용자 정보 새로고침
+      }
+
       return result;
     } catch (e) {
       print('회원가입 오류: $e');
@@ -103,5 +130,17 @@ class AuthService {
       print('계정 삭제 오류: $e');
       return false;
     }
+  }
+
+  // 디버깅용 메서드
+  static void printUserInfo() {
+    final user = _auth.currentUser;
+    print('=== AuthService 사용자 정보 ===');
+    print('로그인 상태: $isLoggedIn');
+    print('UID: $currentUserId');
+    print('이메일: ${user?.email}');
+    print('DisplayName: ${user?.displayName}');
+    print('계산된 사용자명: $currentUserName');
+    print('===============================');
   }
 }
