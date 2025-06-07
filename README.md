@@ -42,16 +42,12 @@
 ## 📸 Screenshots
 
 <div align="center">
-
 | Home Screen | Policy Map | Community |
 |-------------|------------|-----------|
-| ![Home](screenshots/home.png) | ![Map](screenshots/map.png) | ![Community](![Uploading 스크린샷 2025-06-07 오후 9.53.54.png…]()
-) |
-
+| ![Home](screenshots/home.png) | ![Map](screenshots/map.png) | ![Community](screenshots/community.png) |
 | Policy Details | Rating System | Profile |
 |----------------|---------------|---------|
 | ![Details](screenshots/details.png) | ![Rating](screenshots/rating.png) | ![Profile](screenshots/profile.png) |
-
 </div>
 
 ---
