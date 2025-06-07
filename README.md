@@ -41,25 +41,19 @@
 
 ## 📸 Screenshots
 
-—
-
-## 📸 Screenshots
-
 <div align="center">
 
 | Home Screen | Policy Map | Community |
-|——————|——————|—————|
+|-------------|------------|-----------|
 | ![Home](screenshots/home.png) | ![Map](screenshots/map.png) | ![Community](screenshots/community.png) |
 
 | Policy Details | Rating System | Profile |
-|————————|———————|————|
+|----------------|---------------|---------|
 | ![Details](screenshots/details.png) | ![Rating](screenshots/rating.png) | ![Profile](screenshots/profile.png) |
 
 </div>
 
-—
-
-## 🛠️ Tech Stac
+---
 
 ## 🛠️ Tech Stack
 
