@@ -9,6 +9,8 @@ class FirebaseService {
   static final CollectionReference _commentsCollection = _firestore.collection('comments');
   static final CollectionReference _likesCollection = _firestore.collection('likes');
 
+  // ========== 게시글 관련 메서드들 ==========
+
   // 게시글 목록 스트림으로 가져오기
   static Stream<List<Post>> getPostsStream({String? category}) {
     Query query = _postsCollection.orderBy('createdAt', descending: true);
@@ -47,132 +49,19 @@ class FirebaseService {
     }
   }
 
-  // 댓글 관련 기능들
-
-  // 특정 게시글의 댓글 목록 가져오기 (수정된 버전)
-  static Stream<List<Comment>> getCommentsStream(String postId) {
-    return _commentsCollection
-        .where('postId', isEqualTo: postId)
-    // orderBy 제거 - 인덱스 오류 해결
-        .snapshots()
-        .map((snapshot) {
-      List<Comment> comments = snapshot.docs.map((doc) => Comment.fromFirestore(doc)).toList();
-
-      // 클라이언트에서 정렬 (최신순으로 변경)
-      comments.sort((a, b) {
-        if (a.createdAt == null && b.createdAt == null) return 0;
-        if (a.createdAt == null) return 1;
-        if (b.createdAt == null) return -1;
-        return b.createdAt!.compareTo(a.createdAt!); // 최신순 정렬
+  // 게시글 수정
+  static Future<bool> updatePost(String postId, Post updatedPost) async {
+    try {
+      await _postsCollection.doc(postId).update({
+        'title': updatedPost.title,
+        'content': updatedPost.content,
+        'category': updatedPost.category,
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
       });
-
-      return comments;
-    });
-  }
-
-  // 대안: 인덱스가 완성되면 사용할 수 있는 서버 정렬 버전
-  static Stream<List<Comment>> getCommentsStreamWithServerSort(String postId) {
-    // 인덱스가 완성되면 이 함수를 사용
-    return _commentsCollection
-        .where('postId', isEqualTo: postId)
-        .orderBy('createdAt', descending: true)  // 최신순
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => Comment.fromFirestore(doc)).toList();
-    });
-  }
-
-  // 새 댓글 작성
-  static Future<bool> createComment(Comment comment) async {
-    try {
-      // 댓글 추가
-      await _commentsCollection.add(comment.toFirestore());
-
-      // 게시글의 댓글 수 업데이트
-      await _updatePostCommentCount(comment.postId);
-
       return true;
     } catch (e) {
-      print('댓글 작성 에러: $e');
+      print('게시글 수정 에러: $e');
       return false;
-    }
-  }
-
-  // 게시글의 댓글 수 업데이트
-  static Future<void> _updatePostCommentCount(String postId) async {
-    try {
-      // 해당 게시글의 댓글 수 계산
-      QuerySnapshot comments = await _commentsCollection
-          .where('postId', isEqualTo: postId)
-          .get();
-
-      int commentCount = comments.docs.length;
-
-      // 게시글의 댓글 수 업데이트
-      await _postsCollection.doc(postId).update({'comments': commentCount});
-    } catch (e) {
-      print('댓글 수 업데이트 에러: $e');
-    }
-  }
-
-  // 좋아요 관련 기능들
-
-  // 좋아요 토글 (추가/제거)
-  static Future<bool> toggleLike(String postId, String userId) async {
-    try {
-      String likeId = '${postId}_$userId';
-      DocumentReference likeRef = _likesCollection.doc(likeId);
-
-      DocumentSnapshot likeDoc = await likeRef.get();
-
-      if (likeDoc.exists) {
-        // 좋아요가 이미 있으면 제거
-        await likeRef.delete();
-      } else {
-        // 좋아요가 없으면 추가
-        await likeRef.set({
-          'postId': postId,
-          'userId': userId,
-          'createdAt': Timestamp.fromDate(DateTime.now()),
-        });
-      }
-
-      // 게시글의 좋아요 수 업데이트
-      await _updatePostLikeCount(postId);
-
-      return true;
-    } catch (e) {
-      print('좋아요 토글 에러: $e');
-      return false;
-    }
-  }
-
-  // 사용자가 특정 게시글에 좋아요를 했는지 확인
-  static Future<bool> isLiked(String postId, String userId) async {
-    try {
-      String likeId = '${postId}_$userId';
-      DocumentSnapshot likeDoc = await _likesCollection.doc(likeId).get();
-      return likeDoc.exists;
-    } catch (e) {
-      print('좋아요 확인 에러: $e');
-      return false;
-    }
-  }
-
-  // 게시글의 좋아요 수 업데이트
-  static Future<void> _updatePostLikeCount(String postId) async {
-    try {
-      // 해당 게시글의 좋아요 수 계산
-      QuerySnapshot likes = await _likesCollection
-          .where('postId', isEqualTo: postId)
-          .get();
-
-      int likeCount = likes.docs.length;
-
-      // 게시글의 좋아요 수 업데이트
-      await _postsCollection.doc(postId).update({'likes': likeCount});
-    } catch (e) {
-      print('좋아요 수 업데이트 에러: $e');
     }
   }
 
@@ -188,12 +77,22 @@ class FirebaseService {
         await comment.reference.delete();
       }
 
-      // 관련 좋아요들 삭제
-      QuerySnapshot likes = await _likesCollection
+      // 관련 댓글 좋아요들 삭제
+      QuerySnapshot commentLikes = await _firestore
+          .collection('comment_likes')
+          .where('commentId', whereIn: comments.docs.map((doc) => doc.id).toList())
+          .get();
+
+      for (QueryDocumentSnapshot like in commentLikes.docs) {
+        await like.reference.delete();
+      }
+
+      // 관련 게시글 좋아요들 삭제
+      QuerySnapshot postLikes = await _likesCollection
           .where('postId', isEqualTo: postId)
           .get();
 
-      for (QueryDocumentSnapshot like in likes.docs) {
+      for (QueryDocumentSnapshot like in postLikes.docs) {
         await like.reference.delete();
       }
 
@@ -207,25 +106,12 @@ class FirebaseService {
     }
   }
 
-  // 댓글 삭제
-  static Future<bool> deleteComment(String commentId, String postId) async {
-    try {
-      await _commentsCollection.doc(commentId).delete();
-      await _updatePostCommentCount(postId);
-      return true;
-    } catch (e) {
-      print('댓글 삭제 에러: $e');
-      return false;
-    }
-  }
-
   // 내가 쓴 게시글 스트림
   static Stream<List<Post>> getMyPostsStream({
     required String userId,
     String? category,
   }) {
     try {
-      // 기본 쿼리 - orderBy 제거하여 인덱스 오류 방지
       Query query = _postsCollection.where('author', isEqualTo: AuthService.currentUserName);
 
       if (category != null) {
@@ -253,33 +139,243 @@ class FirebaseService {
     }
   }
 
-  // 게시글 수정
-  static Future<bool> updatePost(String postId, Post updatedPost) async {
-    try {
-      await _postsCollection.doc(postId).update({
-        'title': updatedPost.title,
-        'content': updatedPost.content,
-        'category': updatedPost.category,
-        'updatedAt': Timestamp.fromDate(DateTime.now()), // 수정 시간 추가
+  // ========== 댓글 관련 메서드들 ==========
+
+  // 최상위 댓글만 가져오기 (UI 표시용)
+  static Stream<List<Comment>> getCommentsStream(String postId) {
+    return _commentsCollection
+        .where('postId', isEqualTo: postId)
+        .where('parentCommentId', isNull: true) // 최상위 댓글만
+        .snapshots()
+        .map((snapshot) {
+      List<Comment> comments = snapshot.docs.map((doc) => Comment.fromFirestore(doc)).toList();
+
+      // 클라이언트에서 정렬 (최신순)
+      comments.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return b.createdAt!.compareTo(a.createdAt!);
       });
+
+      return comments;
+    });
+  }
+
+  // 모든 댓글 가져오기 (답글 포함 - 댓글 수 계산용)
+  static Stream<List<Comment>> getAllCommentsStream(String postId) {
+    return _commentsCollection
+        .where('postId', isEqualTo: postId)
+    // parentCommentId 조건 없음 = 모든 댓글과 답글 포함
+        .snapshots()
+        .map((snapshot) {
+      List<Comment> allComments = snapshot.docs.map((doc) => Comment.fromFirestore(doc)).toList();
+      return allComments;
+    });
+  }
+
+  // 특정 댓글의 답글들 가져오기
+  static Stream<List<Comment>> getRepliesStream(String parentCommentId) {
+    return _commentsCollection
+        .where('parentCommentId', isEqualTo: parentCommentId)
+        .snapshots()
+        .map((snapshot) {
+      List<Comment> replies = snapshot.docs.map((doc) => Comment.fromFirestore(doc)).toList();
+
+      // 클라이언트에서 시간순 정렬 (답글은 오래된 순)
+      replies.sort((a, b) {
+        if (a.createdAt == null && b.createdAt == null) return 0;
+        if (a.createdAt == null) return 1;
+        if (b.createdAt == null) return -1;
+        return a.createdAt!.compareTo(b.createdAt!);
+      });
+
+      return replies;
+    });
+  }
+
+  // 새 댓글 작성
+  static Future<bool> createComment(Comment comment) async {
+    try {
+      await _commentsCollection.add(comment.toFirestore());
+      await _updatePostCommentCount(comment.postId);
       return true;
     } catch (e) {
-      print('게시글 수정 에러: $e');
+      print('댓글 작성 에러: $e');
       return false;
     }
   }
 
+  // 답글 작성
+  static Future<bool> createReply(Comment reply) async {
+    try {
+      await _commentsCollection.add(reply.toFirestore());
+      await _updatePostCommentCount(reply.postId);
+      return true;
+    } catch (e) {
+      print('답글 작성 오류: $e');
+      return false;
+    }
+  }
+
+  // 댓글 삭제
+  static Future<bool> deleteComment(String commentId, String postId) async {
+    try {
+      // 해당 댓글의 모든 답글도 삭제
+      QuerySnapshot replies = await _commentsCollection
+          .where('parentCommentId', isEqualTo: commentId)
+          .get();
+
+      for (QueryDocumentSnapshot reply in replies.docs) {
+        await reply.reference.delete();
+      }
+
+      // 댓글 삭제
+      await _commentsCollection.doc(commentId).delete();
+
+      // 댓글 수 업데이트
+      await _updatePostCommentCount(postId);
+      return true;
+    } catch (e) {
+      print('댓글 삭제 에러: $e');
+      return false;
+    }
+  }
+
+  // 게시글의 댓글 수 업데이트 (답글 포함)
+  static Future<void> _updatePostCommentCount(String postId) async {
+    try {
+      QuerySnapshot comments = await _commentsCollection
+          .where('postId', isEqualTo: postId)
+          .get(); // 모든 댓글과 답글 포함
+
+      int commentCount = comments.docs.length;
+      await _postsCollection.doc(postId).update({'comments': commentCount});
+
+      print('댓글 수 업데이트: $postId -> $commentCount개 (답글 포함)');
+    } catch (e) {
+      print('댓글 수 업데이트 에러: $e');
+    }
+  }
+
+  // ========== 좋아요 관련 메서드들 ==========
+
+  // 게시글 좋아요 토글
+  static Future<bool> toggleLike(String postId, String userId) async {
+    try {
+      String likeId = '${postId}_$userId';
+      DocumentReference likeRef = _likesCollection.doc(likeId);
+
+      DocumentSnapshot likeDoc = await likeRef.get();
+
+      if (likeDoc.exists) {
+        await likeRef.delete();
+      } else {
+        await likeRef.set({
+          'postId': postId,
+          'userId': userId,
+          'createdAt': Timestamp.fromDate(DateTime.now()),
+        });
+      }
+
+      await _updatePostLikeCount(postId);
+      return true;
+    } catch (e) {
+      print('좋아요 토글 에러: $e');
+      return false;
+    }
+  }
+
+  // 게시글 좋아요 상태 확인
+  static Future<bool> isLiked(String postId, String userId) async {
+    try {
+      String likeId = '${postId}_$userId';
+      DocumentSnapshot likeDoc = await _likesCollection.doc(likeId).get();
+      return likeDoc.exists;
+    } catch (e) {
+      print('좋아요 확인 에러: $e');
+      return false;
+    }
+  }
+
+  // 게시글의 좋아요 수 업데이트
+  static Future<void> _updatePostLikeCount(String postId) async {
+    try {
+      QuerySnapshot likes = await _likesCollection
+          .where('postId', isEqualTo: postId)
+          .get();
+
+      int likeCount = likes.docs.length;
+      await _postsCollection.doc(postId).update({'likes': likeCount});
+    } catch (e) {
+      print('좋아요 수 업데이트 에러: $e');
+    }
+  }
+
+  // 댓글 좋아요 토글
+  static Future<bool> toggleCommentLike(String commentId, String userId) async {
+    try {
+      String likeId = 'comment_${commentId}_$userId';
+      DocumentReference likeRef = _firestore.collection('comment_likes').doc(likeId);
+
+      DocumentSnapshot likeDoc = await likeRef.get();
+
+      if (likeDoc.exists) {
+        await likeRef.delete();
+      } else {
+        await likeRef.set({
+          'commentId': commentId,
+          'userId': userId,
+          'createdAt': Timestamp.fromDate(DateTime.now()),
+        });
+      }
+
+      await _updateCommentLikeCount(commentId);
+      return true;
+    } catch (e) {
+      print('댓글 좋아요 토글 오류: $e');
+      return false;
+    }
+  }
+
+  // 댓글 좋아요 상태 확인
+  static Future<bool> isCommentLiked(String commentId, String userId) async {
+    try {
+      String likeId = 'comment_${commentId}_$userId';
+      DocumentSnapshot likeDoc = await _firestore.collection('comment_likes').doc(likeId).get();
+      return likeDoc.exists;
+    } catch (e) {
+      print('댓글 좋아요 확인 오류: $e');
+      return false;
+    }
+  }
+
+  // 댓글의 좋아요 수 업데이트
+  static Future<void> _updateCommentLikeCount(String commentId) async {
+    try {
+      QuerySnapshot likes = await _firestore
+          .collection('comment_likes')
+          .where('commentId', isEqualTo: commentId)
+          .get();
+
+      int likeCount = likes.docs.length;
+      await _commentsCollection.doc(commentId).update({'likes': likeCount});
+    } catch (e) {
+      print('댓글 좋아요 수 업데이트 오류: $e');
+    }
+  }
+
+  // ========== 초기 데이터 관련 ==========
+
   // 초기 더미 데이터 추가 (한 번만 실행)
   static Future<void> addInitialData() async {
     try {
-      // 기존 데이터가 있는지 확인
       QuerySnapshot existing = await _postsCollection.limit(1).get();
       if (existing.docs.isNotEmpty) {
         print('데이터가 이미 존재합니다.');
         return;
       }
 
-      // 더미 데이터 추가
       List<Post> dummyPosts = [
         Post(
           id: '',
@@ -288,8 +384,8 @@ class FirebaseService {
           category: '후기',
           author: '성철남',
           createdAt: DateTime.now().subtract(Duration(hours: 8)),
-          likes: 0, // Firebase에서 자동 계산
-          comments: 0, // Firebase에서 자동 계산
+          likes: 0,
+          comments: 0,
           isHot: true,
         ),
         Post(

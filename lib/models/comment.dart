@@ -4,19 +4,25 @@ class Comment {
   final String id;
   final String postId;
   final String author;
-  final String authorId;  // 추가
+  final String authorId;
   final String content;
-  final DateTime? createdAt;  // nullable로 변경
+  final DateTime? createdAt;
   final bool isAuthor;
+  final int likes; // 좋아요 수
+  final String? parentCommentId; // 답글인 경우 부모 댓글 ID
+  final bool isReply; // 답글 여부
 
   Comment({
     required this.id,
     required this.postId,
     required this.author,
-    required this.authorId,  // 추가
+    required this.authorId,
     required this.content,
-    this.createdAt,  // nullable
+    this.createdAt,
     this.isAuthor = false,
+    this.likes = 0,
+    this.parentCommentId,
+    this.isReply = false,
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -37,10 +43,13 @@ class Comment {
       id: doc.id,
       postId: data['postId'] ?? '',
       author: data['author'] ?? '익명',
-      authorId: data['authorId'] ?? '',  // 추가
+      authorId: data['authorId'] ?? '',
       content: data['content'] ?? '',
       createdAt: createdAtDate,
       isAuthor: data['isAuthor'] ?? false,
+      likes: data['likes'] ?? 0,
+      parentCommentId: data['parentCommentId'],
+      isReply: data['parentCommentId'] != null,
     );
   }
 
@@ -49,17 +58,19 @@ class Comment {
     return {
       'postId': postId,
       'author': author,
-      'authorId': authorId,  // 추가
+      'authorId': authorId,
       'content': content,
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
       'isAuthor': isAuthor,
+      'likes': likes,
+      'parentCommentId': parentCommentId,
     };
   }
 
   @override
   String toString() {
-    return 'Comment{id: $id, postId: $postId, author: $author, content: $content, createdAt: $createdAt}';
+    return 'Comment{id: $id, author: $author, content: $content, isReply: $isReply}';
   }
 }

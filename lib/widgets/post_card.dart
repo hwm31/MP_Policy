@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/post.dart';
+import '../models/comment.dart'; // 추가
+import '../services/firebase_service.dart'; // 추가
 
 class PostCard extends StatelessWidget {
   final Post post;
@@ -128,12 +130,19 @@ class PostCard extends StatelessWidget {
                 color: Colors.grey.shade500,
               ),
               SizedBox(width: 4),
-              Text(
-                '${post.comments}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
+              // 실시간 전체 댓글 수 (답글 포함)
+              StreamBuilder<List<Comment>>(
+                stream: FirebaseService.getAllCommentsStream(post.id),
+                builder: (context, snapshot) {
+                  int commentCount = snapshot.hasData ? snapshot.data!.length : post.comments;
+                  return Text(
+                    '$commentCount',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  );
+                },
               ),
             ],
           ),

@@ -4,6 +4,7 @@ import '../services/firebase_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/post_card.dart';
 import 'post_detail_screen.dart';
+import '../models/comment.dart';
 
 class MyPostsScreen extends StatefulWidget {
   @override
@@ -344,10 +345,11 @@ class _MyPostsScreenState extends State<MyPostsScreen> {
                                               Icon(Icons.chat_bubble_outline,
                                                   color: Colors.grey.shade400, size: 16),
                                               SizedBox(width: 4),
-                                              StreamBuilder<List>(
-                                                stream: FirebaseService.getCommentsStream(post.id),
+                                              // 전체 댓글 수 (답글 포함)
+                                              StreamBuilder<List<Comment>>(
+                                                stream: FirebaseService.getAllCommentsStream(post.id),
                                                 builder: (context, snapshot) {
-                                                  int commentCount = snapshot.hasData ? snapshot.data!.length : 0;
+                                                  int commentCount = snapshot.hasData ? snapshot.data!.length : post.comments;
                                                   return Text(
                                                     '$commentCount',
                                                     style: TextStyle(

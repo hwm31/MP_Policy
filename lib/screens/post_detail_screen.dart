@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 추가
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post.dart';
 import '../models/comment.dart';
 import '../services/firebase_service.dart';
 import '../services/auth_service.dart';
-import 'edit_post_screen.dart'; // EditPostScreen import 추가
+import 'edit_post_screen.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -22,7 +22,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   bool _isLoadingLike = false;
   bool _isLoadingComment = false;
 
-  // AuthService에서 실제 사용자 정보 가져오기
   String get _currentUserId => AuthService.currentUserId;
   String get _currentUserName => AuthService.currentUserName;
 
@@ -32,77 +31,27 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     _likeCount = widget.post.likes;
     _checkIfLiked();
 
-    // 강화된 디버깅 로그
-    print('=== PostDetailScreen 상세 디버깅 ===');
-    print('게시글 ID: "${widget.post.id}"');
-    print('게시글 제목: "${widget.post.title}"');
-    print('게시글 작성자 (원본): "${widget.post.author}"');
-    print('게시글 작성자 길이: ${widget.post.author.length}');
-    print('게시글 작성자 바이트: ${widget.post.author.codeUnits}');
-    print('---');
-    print('현재 로그인 상태: ${AuthService.isLoggedIn}');
-    print('현재 사용자 ID: "${AuthService.currentUserId}"');
-    print('현재 사용자 이름 (원본): "${AuthService.currentUserName}"');
-    print('현재 사용자 이름 길이: ${AuthService.currentUserName.length}');
-    print('현재 사용자 이름 바이트: ${AuthService.currentUserName.codeUnits}');
-    print('---');
-    print('문자열 비교 결과: ${widget.post.author == AuthService.currentUserName}');
-    print('trim 후 비교: "${widget.post.author.trim()}" == "${AuthService.currentUserName.trim()}"');
-    print('trim 비교 결과: ${widget.post.author.trim() == AuthService.currentUserName.trim()}');
-    print('===================================');
-
-    // Firebase에서 실제 저장된 데이터 확인
-    _checkFirebaseData();
-
-    // 댓글 입력 필드 변화 감지 (전송 버튼 활성화/비활성화)
     _commentController.addListener(() {
-      setState(() {
-        // 텍스트가 변경될 때마다 UI 업데이트
-      });
+      setState(() {});
     });
   }
 
-  // Firebase 데이터 직접 확인
-  Future<void> _checkFirebaseData() async {
-    try {
-      final doc = await FirebaseFirestore.instance
-          .collection('posts')
-          .doc(widget.post.id)
-          .get();
-
-      if (doc.exists) {
-        final data = doc.data();
-        print('=== Firebase 실제 데이터 ===');
-        print('전체 데이터: $data');
-        print('author 필드: "${data?['author']}"');
-        print('author 타입: ${data?['author'].runtimeType}');
-        print('==========================');
-      }
-    } catch (e) {
-      print('Firebase 데이터 확인 오류: $e');
-    }
-  }
-
-  // 내가 쓴 글인지 확인하는 메서드 (이중 체크)
+  // 내가 쓴 글인지 확인
   bool get _isMyPost {
-    // 1차: authorId로 비교 (가장 정확)
     if (widget.post.authorId != null &&
         widget.post.authorId!.isNotEmpty &&
         widget.post.authorId == _currentUserId) {
-      print('authorId로 본인 글 확인됨');
       return true;
     }
 
-    // 2차: author 이름으로 비교 (호환성)
     if (widget.post.author.trim() == _currentUserName.trim() &&
         _currentUserName.trim().isNotEmpty) {
-      print('author 이름으로 본인 글 확인됨');
       return true;
     }
 
-    print('본인 글이 아님');
     return false;
   }
+
   Future<void> _checkIfLiked() async {
     bool liked = await FirebaseService.isLiked(widget.post.id, _currentUserId);
     if (mounted) {
@@ -112,7 +61,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     }
   }
 
-  // 게시글 수정 화면으로 이동
   void _navigateToEditPost() {
     Navigator.push(
       context,
@@ -121,13 +69,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       ),
     ).then((result) {
       if (result == true) {
-        // 수정 성공 시 현재 화면도 새로고침
         setState(() {});
       }
     });
   }
 
-  // 게시글 삭제 확인 다이얼로그
   void _showDeleteDialog() {
     showDialog(
       context: context,
@@ -153,22 +99,18 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
-  // 게시글 삭제
   Future<void> _deletePost() async {
     try {
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          return Center(
-            child: CircularProgressIndicator(),
-          );
+          return Center(child: CircularProgressIndicator());
         },
       );
 
       bool success = await FirebaseService.deletePost(widget.post.id);
-
-      Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+      Navigator.of(context).pop();
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -177,7 +119,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.of(context).pop(); // 이전 화면으로 돌아가기
+        Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -187,7 +129,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         );
       }
     } catch (e) {
-      Navigator.of(context).pop(); // 로딩 다이얼로그 닫기
+      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('오류가 발생했습니다: ${e.toString()}'),
@@ -213,7 +155,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
         actions: [
-          // 내가 쓴 글인 경우만 수정/삭제 버튼 표시
           if (_isMyPost)
             PopupMenuButton<String>(
               onSelected: (value) {
@@ -325,7 +266,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            // 내가 쓴 글인 경우 배지 표시
                             if (_isMyPost)
                               Container(
                                 margin: EdgeInsets.only(left: 6),
@@ -414,8 +354,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               ),
                             ),
                             SizedBox(width: 12),
+                            // 전체 댓글 수 (답글 포함)
                             StreamBuilder<List<Comment>>(
-                              stream: FirebaseService.getCommentsStream(widget.post.id),
+                              stream: FirebaseService.getAllCommentsStream(widget.post.id),
                               builder: (context, snapshot) {
                                 int commentCount = snapshot.hasData ? snapshot.data!.length : 0;
                                 return Text(
@@ -435,12 +376,11 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
                   Divider(thickness: 8, color: Colors.grey.shade100),
 
-                  // 댓글 목록 (실시간)
+                  // 댓글 목록 (최상위 댓글만)
                   StreamBuilder<List<Comment>>(
                     stream: FirebaseService.getCommentsStream(widget.post.id),
                     builder: (context, snapshot) {
                       if (snapshot.hasError) {
-                        print('댓글 스트림 에러: ${snapshot.error}');
                         return Container(
                           padding: EdgeInsets.all(20),
                           child: Column(
@@ -450,18 +390,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                               Text(
                                 '댓글을 불러올 수 없습니다.',
                                 style: TextStyle(color: Colors.red, fontSize: 16),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                '에러: ${snapshot.error}',
-                                style: TextStyle(color: Colors.grey, fontSize: 12),
-                              ),
-                              SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  setState(() {}); // 화면 새로고침
-                                },
-                                child: Text('다시 시도'),
                               ),
                             ],
                           ),
@@ -484,7 +412,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       }
 
                       List<Comment> comments = snapshot.data ?? [];
-                      print('댓글 개수: ${comments.length}');
 
                       if (comments.isEmpty) {
                         return Container(
@@ -544,11 +471,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                   CircleAvatar(
                     radius: 16,
                     backgroundColor: Colors.green.shade100,
-                    child: Icon(
-                      Icons.person,
-                      color: Colors.green,
-                      size: 18,
-                    ),
+                    child: Icon(Icons.person, color: Colors.green, size: 18),
                   ),
                   SizedBox(width: 12),
                   Expanded(
@@ -572,7 +495,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       maxLines: null,
                       minLines: 1,
                       textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _addComment(), // 엔터키로 전송
+                      onSubmitted: (_) => _addComment(),
                     ),
                   ),
                   SizedBox(width: 8),
@@ -588,15 +511,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             ? Colors.grey.shade300
                             : Colors.green,
                         shape: BoxShape.circle,
-                        boxShadow: (_isLoadingComment || _commentController.text.trim().isEmpty)
-                            ? []
-                            : [
-                          BoxShadow(
-                            color: Colors.green.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
                       ),
                       child: _isLoadingComment
                           ? SizedBox(
@@ -607,11 +521,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                          : Icon(
-                        Icons.send,
-                        color: Colors.white,
-                        size: 18,
-                      ),
+                          : Icon(Icons.send, color: Colors.white, size: 18),
                     ),
                   ),
                 ],
@@ -623,33 +533,180 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     );
   }
 
+  // 댓글 아이템 빌드
   Widget _buildCommentItem(Comment comment) {
     bool isMyComment = comment.authorId == _currentUserId;
     bool isPostAuthor = comment.author == widget.post.author;
 
+    return Column(
+      children: [
+        // 메인 댓글
+        Container(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: isMyComment
+                    ? Colors.blue.shade100
+                    : isPostAuthor
+                    ? Colors.green.shade100
+                    : Colors.grey.shade200,
+                child: Icon(
+                  Icons.person,
+                  color: isMyComment
+                      ? Colors.blue
+                      : isPostAuthor
+                      ? Colors.green
+                      : Colors.grey.shade600,
+                  size: 20,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 작성자 정보
+                    Row(
+                      children: [
+                        Text(
+                          comment.author,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        if (isPostAuthor)
+                          Container(
+                            margin: EdgeInsets.only(left: 6),
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '작성자',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        if (isMyComment)
+                          Container(
+                            margin: EdgeInsets.only(left: 6),
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '나',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        Spacer(),
+                        Text(
+                          _getTimeAgo(comment.createdAt),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+
+                    // 댓글 내용
+                    Text(
+                      comment.content,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black87,
+                        height: 1.4,
+                      ),
+                    ),
+
+                    SizedBox(height: 8),
+
+                    // 액션 버튼들
+                    Row(
+                      children: [
+                        _buildCommentLikeButton(comment),
+                        SizedBox(width: 20),
+                        _buildReplyButton(comment),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // 답글 목록
+        StreamBuilder<List<Comment>>(
+          stream: FirebaseService.getRepliesStream(comment.id),
+          builder: (context, snapshot) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return SizedBox.shrink();
+            }
+
+            List<Comment> replies = snapshot.data!;
+
+            return Container(
+              margin: EdgeInsets.only(left: 50),
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: Colors.grey.shade300, width: 2),
+                ),
+              ),
+              child: Column(
+                children: replies.map((reply) => _buildReplyItem(reply)).toList(),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // 답글 아이템 빌드
+  Widget _buildReplyItem(Comment reply) {
+    bool isMyReply = reply.authorId == _currentUserId;
+    bool isPostAuthor = reply.author == widget.post.author;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            radius: 16,
-            backgroundColor: isMyComment
+            radius: 14,
+            backgroundColor: isMyReply
                 ? Colors.blue.shade100
                 : isPostAuthor
                 ? Colors.green.shade100
                 : Colors.grey.shade200,
             child: Icon(
               Icons.person,
-              color: isMyComment
+              color: isMyReply
                   ? Colors.blue
                   : isPostAuthor
                   ? Colors.green
                   : Colors.grey.shade600,
-              size: 18,
+              size: 16,
             ),
           ),
-          SizedBox(width: 12),
+          SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -657,44 +714,42 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 Row(
                   children: [
                     Text(
-                      comment.author,
+                      reply.author,
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                         color: Colors.black87,
                       ),
                     ),
-                    // 게시글 작성자 배지
                     if (isPostAuthor)
                       Container(
-                        margin: EdgeInsets.only(left: 6),
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        margin: EdgeInsets.only(left: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                         decoration: BoxDecoration(
                           color: Colors.green.shade100,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '작성자',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9,
                             color: Colors.green.shade700,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                    // 내 댓글 배지
-                    if (isMyComment)
+                    if (isMyReply)
                       Container(
-                        margin: EdgeInsets.only(left: 6),
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        margin: EdgeInsets.only(left: 4),
+                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                         decoration: BoxDecoration(
                           color: Colors.blue.shade100,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           '나',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9,
                             color: Colors.blue.shade700,
                             fontWeight: FontWeight.w500,
                           ),
@@ -702,9 +757,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       ),
                     Spacer(),
                     Text(
-                      _getTimeAgo(comment.createdAt),
+                      _getTimeAgo(reply.createdAt),
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: Colors.grey.shade500,
                       ),
                     ),
@@ -712,18 +767,411 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  comment.content,
+                  reply.content,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     color: Colors.black87,
-                    height: 1.4,
+                    height: 1.3,
                   ),
                 ),
+                SizedBox(height: 6),
+                _buildCommentLikeButton(reply, isSmall: true),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // 댓글 좋아요 버튼
+  Widget _buildCommentLikeButton(Comment comment, {bool isSmall = false}) {
+    return FutureBuilder<bool>(
+      future: FirebaseService.isCommentLiked(comment.id, _currentUserId),
+      builder: (context, snapshot) {
+        bool isLiked = snapshot.data ?? false;
+
+        return GestureDetector(
+          onTap: () async {
+            await FirebaseService.toggleCommentLike(comment.id, _currentUserId);
+            setState(() {});
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isLiked ? Icons.favorite : Icons.favorite_border,
+                size: isSmall ? 14 : 16,
+                color: isLiked ? Colors.red.shade400 : Colors.grey.shade500,
+              ),
+              if (comment.likes > 0) ...[
+                SizedBox(width: 4),
+                Text(
+                  '${comment.likes}',
+                  style: TextStyle(
+                    fontSize: isSmall ? 11 : 12,
+                    color: isLiked ? Colors.red.shade400 : Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 답글 버튼
+  Widget _buildReplyButton(Comment comment) {
+    return GestureDetector(
+      onTap: () => _showReplyDialog(comment),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 16,
+            color: Colors.grey.shade500,
+          ),
+          SizedBox(width: 4),
+          Text(
+            '답글',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 답글 다이얼로그
+  // PostDetailScreen의 _showReplyDialog 메서드를 이것으로 교체
+
+  void _showReplyDialog(Comment parentComment) {
+    final _replyController = TextEditingController();
+    bool _isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.7), // 배경 어둡게
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 헤더
+                    Container(
+                      padding: EdgeInsets.fromLTRB(24, 20, 16, 0),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.grey.shade200,
+                            child: Icon(
+                              Icons.reply,
+                              color: Colors.grey.shade600,
+                              size: 18,
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${parentComment.author}님에게 답글',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                Text(
+                                  '답글을 남겨보세요',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(
+                              Icons.close,
+                              color: Colors.grey.shade600,
+                              size: 24,
+                            ),
+                            splashRadius: 20,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // 원댓글 미리보기
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 24),
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 3,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade300,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  parentComment.author,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                Text(
+                                  parentComment.content,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade700,
+                                    height: 1.3,
+                                  ),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 20),
+
+                    // 답글 입력창
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 24),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: TextField(
+                        controller: _replyController,
+                        enabled: !_isSubmitting,
+                        maxLines: 4,
+                        minLines: 3,
+                        autofocus: true,
+                        style: TextStyle(fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: '정중하고 따뜻한 답글을 남겨보세요...',
+                          hintStyle: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 15,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.all(16),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                        ),
+                        onChanged: (text) {
+                          setDialogState(() {}); // 버튼 상태 업데이트
+                        },
+                      ),
+                    ),
+
+                    SizedBox(height: 24),
+
+                    // 버튼들
+                    Container(
+                      padding: EdgeInsets.fromLTRB(24, 0, 24, 24),
+                      child: Row(
+                        children: [
+                          // 취소 버튼
+                          Expanded(
+                            child: Container(
+                              height: 48,
+                              child: TextButton(
+                                onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                                style: TextButton.styleFrom(
+                                  backgroundColor: Colors.grey.shade100,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  '취소',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          SizedBox(width: 12),
+
+                          // 답글 등록 버튼
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              height: 48,
+                              child: ElevatedButton(
+                                onPressed: (_isSubmitting || _replyController.text.trim().isEmpty)
+                                    ? null
+                                    : () async {
+                                  String replyText = _replyController.text.trim();
+
+                                  setDialogState(() {
+                                    _isSubmitting = true;
+                                  });
+
+                                  final newReply = Comment(
+                                    id: '',
+                                    postId: widget.post.id,
+                                    author: AuthService.currentUserName,
+                                    authorId: AuthService.currentUserId,
+                                    content: replyText,
+                                    createdAt: DateTime.now(),
+                                    isAuthor: widget.post.author == AuthService.currentUserName,
+                                    parentCommentId: parentComment.id,
+                                  );
+
+                                  bool success = await FirebaseService.createReply(newReply);
+
+                                  Navigator.pop(context);
+
+                                  if (success) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(Icons.check_circle, color: Colors.white, size: 20),
+                                            SizedBox(width: 8),
+                                            Text('답글이 등록되었습니다 ✨'),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.green,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        margin: EdgeInsets.all(16),
+                                      ),
+                                    );
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(Icons.error, color: Colors.white, size: 20),
+                                            SizedBox(width: 8),
+                                            Text('답글 등록에 실패했습니다'),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        margin: EdgeInsets.all(16),
+                                      ),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _replyController.text.trim().isEmpty
+                                      ? Colors.grey.shade300
+                                      : Colors.green,
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: _isSubmitting
+                                    ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                    : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.send_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '답글 등록',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -736,7 +1184,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       bool success = await FirebaseService.toggleLike(widget.post.id, _currentUserId);
 
       if (success) {
-        // 좋아요 상태 토글
         setState(() {
           _isLiked = !_isLiked;
           _likeCount += _isLiked ? 1 : -1;
@@ -768,7 +1215,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       return;
     }
 
-    // 로그인 확인
     if (!AuthService.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -784,11 +1230,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     });
 
     try {
-      print('댓글 작성 시작: $commentText');
-      print('현재 사용자: ${AuthService.currentUserName} (${AuthService.currentUserId})');
-
       final newComment = Comment(
-        id: '', // Firestore에서 자동 생성
+        id: '',
         postId: widget.post.id,
         author: AuthService.currentUserName.isNotEmpty
             ? AuthService.currentUserName
@@ -799,10 +1242,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         isAuthor: widget.post.author == AuthService.currentUserName,
       );
 
-      print('댓글 데이터: ${newComment.toFirestore()}');
-
       bool success = await FirebaseService.createComment(newComment);
-      print('댓글 작성 결과: $success');
 
       if (success) {
         _commentController.clear();
@@ -819,7 +1259,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         throw Exception('댓글 작성에 실패했습니다.');
       }
     } catch (e) {
-      print('댓글 작성 에러: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('댓글 등록 중 오류가 발생했습니다: ${e.toString()}'),

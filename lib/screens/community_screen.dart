@@ -46,14 +46,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
         elevation: 0,
         centerTitle: false,
         actions: [
-          // 디버깅용 사용자 정보 확인 버튼 (임시)
-          IconButton(
-            onPressed: () {
-              _showUserDebugInfo();
-            },
-            icon: Icon(Icons.bug_report, color: Colors.purple),
-            tooltip: '사용자 정보 확인',
-          ),
           // 현재 사용자 정보 표시
           if (AuthService.isLoggedIn)
             Container(
@@ -438,69 +430,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 }
               },
               child: Text('저장'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  // 사용자 정보 디버깅 다이얼로그
-  void _showUserDebugInfo() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('현재 사용자 정보'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('로그인 상태: ${AuthService.isLoggedIn}'),
-                SizedBox(height: 8),
-                Text('사용자 ID: ${AuthService.currentUserId}'),
-                SizedBox(height: 8),
-                Text('사용자 이름: "${AuthService.currentUserName}"'),
-                SizedBox(height: 8),
-                Text('이메일: ${AuthService.currentUser?.email ?? "없음"}'),
-                SizedBox(height: 8),
-                Text('DisplayName: "${AuthService.currentUser?.displayName ?? "없음"}"'),
-                SizedBox(height: 16),
-                Text('Firebase의 게시글 작성자: "이명"'),
-                SizedBox(height: 8),
-                Text('일치 여부: ${AuthService.currentUserName == "이명" ? "일치" : "불일치"}'),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('확인'),
-            ),
-            // 강제로 이름을 "이명"으로 설정하는 버튼
-            TextButton(
-              onPressed: () async {
-                bool success = await AuthService.updateProfile(displayName: "이명");
-                if (success) {
-                  Navigator.of(context).pop();
-                  setState(() {});
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('이름을 "이명"으로 설정했습니다'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('이름 설정 실패'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              child: Text('이름을 "이명"으로 설정'),
             ),
           ],
         );
