@@ -43,9 +43,9 @@
 
 <div align="center">
 
-| Home Screen | Policy Map | Community |
+| Login | Home Screen | Community |
 |-------------|------------|-----------|
-| ![Home](screenshots/home.png) | ![Map](screenshots/map.png) | ![Community](screenshots/community.png) |
+| ![Home](screenshots/login.png) | ![Map](screenshots/home.png) | ![Community](screenshots/community.png) |
 
 | Policy Details | Rating System | Profile |
 |----------------|---------------|---------|
